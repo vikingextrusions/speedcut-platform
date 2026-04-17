@@ -1,8 +1,13 @@
 import Link from 'next/link'
 import { ArrowRight, Package, Shield, Zap } from 'lucide-react'
 import { MarketingHeader } from '@/components/marketing-header'
+import { createClient } from '@/utils/supabase/server'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isLoggedIn = !!user
+
   return (
     <div
       data-theme="dark"
@@ -12,7 +17,7 @@ export default function HomePage() {
         color: '#e8eaf0',
       }}
     >
-      <MarketingHeader />
+      <MarketingHeader isLoggedIn={isLoggedIn} />
 
       {/* ─── Hero ─── */}
       <div className="flex-1 flex flex-col items-center justify-center p-8" style={{ paddingTop: '6rem' }}>
@@ -36,19 +41,31 @@ export default function HomePage() {
 
           {/* CTA */}
           <div className="flex items-center justify-center gap-4">
-            <Link
-              href="/login"
-              className="btn-primary flex items-center gap-2 px-8 py-3 text-base"
-            >
-              Get Started
-              <ArrowRight size={18} />
-            </Link>
-            <Link
-              href="/quotes/new"
-              className="btn-secondary flex items-center gap-2 px-8 py-3 text-base"
-            >
-              Request a Quote
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="btn-primary flex items-center gap-2 px-8 py-3 text-base"
+              >
+                Go to Dashboard
+                <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="btn-primary flex items-center gap-2 px-8 py-3 text-base"
+                >
+                  Get Started
+                  <ArrowRight size={18} />
+                </Link>
+                <Link
+                  href="/quotes/new"
+                  className="btn-secondary flex items-center gap-2 px-8 py-3 text-base"
+                >
+                  Request a Quote
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Features */}

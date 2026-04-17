@@ -161,7 +161,11 @@ const navDropdowns: NavDropdown[] = [
 
 /* ─── MarketingHeader Component ─── */
 
-export function MarketingHeader() {
+interface MarketingHeaderProps {
+  isLoggedIn?: boolean
+}
+
+export function MarketingHeader({ isLoggedIn = false }: MarketingHeaderProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -286,31 +290,50 @@ export function MarketingHeader() {
 
             {/* Right Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="desktop-actions">
-              <Link
-                href="/login"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                  color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', fontWeight: 500,
-                  textDecoration: 'none', borderRadius: 8, transition: 'color 0.15s ease',
-                }}
-              >
-                <LogIn size={16} />
-                Sign In
-              </Link>
-              <Link
-                href="/quotes/new"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px',
-                  background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
-                  color: '#fff', fontSize: '0.875rem', fontWeight: 600,
-                  borderRadius: 10, textDecoration: 'none',
-                  boxShadow: '0 2px 12px rgba(0,217,225,0.3)',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                Get a Quote
-                <ArrowRight size={16} />
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px',
+                    background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
+                    color: '#fff', fontSize: '0.875rem', fontWeight: 600,
+                    borderRadius: 10, textDecoration: 'none',
+                    boxShadow: '0 2px 12px rgba(0,217,225,0.3)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Go to Dashboard
+                  <ArrowRight size={16} />
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                      color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', fontWeight: 500,
+                      textDecoration: 'none', borderRadius: 8, transition: 'color 0.15s ease',
+                    }}
+                  >
+                    <LogIn size={16} />
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/quotes/new"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px',
+                      background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
+                      color: '#fff', fontSize: '0.875rem', fontWeight: 600,
+                      borderRadius: 10, textDecoration: 'none',
+                      boxShadow: '0 2px 12px rgba(0,217,225,0.3)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    Get a Quote
+                    <ArrowRight size={16} />
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Mobile Toggle */}
@@ -468,17 +491,30 @@ export function MarketingHeader() {
             <MobileAccordion key={dropdown.label} dropdown={dropdown} />
           ))}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 12, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <Link href="/login" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', textDecoration: 'none' }}>
-              <LogIn size={18} /> Sign In
-            </Link>
-            <Link href="/quotes/new" onClick={() => setMobileOpen(false)} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '12px', borderRadius: 10,
-              background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
-              color: '#fff', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none',
-            }}>
-              Get a Quote <ArrowRight size={16} />
-            </Link>
+            {isLoggedIn ? (
+              <Link href="/dashboard" onClick={() => setMobileOpen(false)} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '12px', borderRadius: 10,
+                background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
+                color: '#fff', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none',
+              }}>
+                Go to Dashboard <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', textDecoration: 'none' }}>
+                  <LogIn size={18} /> Sign In
+                </Link>
+                <Link href="/quotes/new" onClick={() => setMobileOpen(false)} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '12px', borderRadius: 10,
+                  background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
+                  color: '#fff', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  Get a Quote <ArrowRight size={16} />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

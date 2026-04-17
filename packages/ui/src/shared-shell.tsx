@@ -96,7 +96,9 @@ export function SharedShell({
     const accent = portalAccents[portal]
     if (accent) {
       document.documentElement.style.setProperty('--accent', accent)
-      return () => document.documentElement.style.removeProperty('--accent')
+      return () => {
+        document.documentElement.style.removeProperty('--accent')
+      }
     }
   }, [portal])
 

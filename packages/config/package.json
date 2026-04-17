@@ -1,0 +1,11 @@
+{
+  "name": "@speedcut/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./tailwind/globals.css": "./tailwind/globals.css",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
+    "./tsconfig/react-library.json": "./tsconfig/react-library.json"
+  }
+}

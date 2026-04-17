@@ -1,0 +1,7 @@
+@import "@speedcut/config/tailwind/globals.css";
+
+/*
+ * App-specific overrides for the Customer Portal (web)
+ * The shared tokens are imported above from @speedcut/config.
+ * Add web-specific styles below.
+ */

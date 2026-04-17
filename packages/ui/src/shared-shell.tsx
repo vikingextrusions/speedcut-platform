@@ -214,6 +214,42 @@ export function SharedShell({
             )}
           </Link>
 
+          {/* ── Collapse Toggle (floating on edge) ── */}
+          <button
+            onClick={toggle}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="collapse-toggle-btn"
+            style={{
+              position: 'absolute',
+              top: 22,
+              right: -14,
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              border: '1px solid var(--border)',
+              backgroundColor: 'var(--bg-surface)',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 60,
+              transition: 'transform 0.3s ease, color 0.15s ease, background-color 0.15s ease',
+              transform: isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)'
+              e.currentTarget.style.borderColor = 'var(--accent)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)'
+              e.currentTarget.style.borderColor = 'var(--border)'
+            }}
+          >
+            <PanelLeftClose size={14} />
+          </button>
+
           {/* ── Navigation ── */}
           <nav style={{ flex: 1, overflowY: 'auto', padding: isCollapsed ? '12px 8px' : '12px 12px', transition: 'padding 0.3s ease' }}>
             {navSections.map((section, sIdx) => (
@@ -337,31 +373,6 @@ export function SharedShell({
               )
             })}
 
-            {/* Collapse Toggle (Desktop) */}
-            <button
-              onClick={toggle}
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="collapse-toggle-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: isCollapsed ? '10px 0' : '10px 12px',
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                borderRadius: 10,
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                width: '100%',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
-              {!isCollapsed && <span>Collapse</span>}
-            </button>
 
             {/* Sign Out */}
             {onSignOut && (

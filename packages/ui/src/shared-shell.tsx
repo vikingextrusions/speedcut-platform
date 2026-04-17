@@ -6,10 +6,10 @@ import { usePathname } from 'next/navigation'
 import {
   Menu,
   X,
-  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   LogOut,
-  Settings,
-  User,
+  Zap,
 } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 
@@ -58,10 +58,14 @@ export function useSidebar() {
 /* ─── Portal Accent Map ─── */
 
 const portalAccents: Record<PortalType, string> = {
-  web: '', // default accent from tokens
-  partner: 'hsl(260, 80%, 60%)', // purple for partner
-  admin: 'hsl(30, 90%, 55%)', // amber for admin
+  web: '',
+  partner: 'hsl(260, 80%, 60%)',
+  admin: 'hsl(30, 90%, 55%)',
 }
+
+/* ─── Constants ─── */
+const SIDEBAR_EXPANDED = 260
+const SIDEBAR_COLLAPSED = 72
 
 /* ─── SharedShell Component ─── */
 
@@ -78,9 +82,10 @@ export function SharedShell({
   const pathname = usePathname()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
-  // Load sidebar preference
   useEffect(() => {
+    setMounted(true)
     const saved = localStorage.getItem('sidebar-collapsed')
     if (saved !== null) setIsCollapsed(saved === 'true')
   }, [])
@@ -102,84 +107,140 @@ export function SharedShell({
     }
   }, [portal])
 
+  // Close mobile nav on route change
+  useEffect(() => {
+    setIsMobileOpen(false)
+  }, [pathname])
+
+  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED
+
   return (
     <SidebarContext.Provider value={{ isCollapsed, toggle }}>
-      <div className="flex min-h-screen bg-[var(--bg-primary)] transition-colors duration-300">
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
         {/* ─── Mobile Backdrop ─── */}
-        {isMobileOpen && (
-          <div
-            className="fixed inset-0 bg-[var(--overlay)] z-40 lg:hidden backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileOpen(false)}
-          />
-        )}
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 40,
+            opacity: isMobileOpen ? 1 : 0,
+            pointerEvents: isMobileOpen ? 'auto' : 'none',
+            transition: 'opacity 0.3s ease',
+          }}
+        />
 
-        {/* ─── Mobile Toggle ─── */}
+        {/* ─── Mobile Toggle Button ─── */}
         <button
-          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] lg:hidden"
           onClick={() => setIsMobileOpen(!isMobileOpen)}
+          aria-label="Toggle menu"
+          style={{
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            zIndex: 60,
+            padding: 10,
+            borderRadius: 10,
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}
+          className="mobile-menu-btn"
         >
-          {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+          {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
         {/* ─── Sidebar ─── */}
         <aside
-          className={`
-            fixed inset-y-0 left-0 z-40 bg-[var(--bg-surface)] border-r border-[var(--border)] flex flex-col
-            transition-all duration-300 ease-in-out
-            ${isMobileOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
-            ${isCollapsed ? 'lg:w-20' : 'lg:w-72'}
-          `}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: SIDEBAR_EXPANDED,
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-surface)',
+            borderRight: '1px solid var(--border)',
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            ...(mounted ? {
+              width: sidebarWidth,
+            } : {}),
+            transform: isMobileOpen ? 'translateX(0)' : undefined,
+          }}
+          className="sidebar-aside"
         >
-          {/* Collapse Toggle (Desktop) */}
-          <button
-            onClick={toggle}
-            className="hidden lg:flex absolute -right-3 top-24 bg-[var(--bg-surface)] border border-[var(--border)] rounded-full p-1 text-[var(--text-muted)] hover:text-[var(--accent)] z-50 transition-transform duration-300"
-            style={{ transform: isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          {/* Branding */}
+          {/* ── Logo / Branding ── */}
           <Link
             href="/"
-            className={`
-              p-6 border-b border-[var(--border)] flex items-center justify-center h-24 overflow-hidden hover:opacity-80 transition-opacity
-              ${isCollapsed ? 'px-2' : 'px-6'}
-            `}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: isCollapsed ? '20px 0' : '20px 24px',
+              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              borderBottom: '1px solid var(--border)',
+              textDecoration: 'none',
+              minHeight: 64,
+              transition: 'padding 0.3s ease',
+            }}
           >
-            {logoSrc ? (
-              <div
-                className={`relative transition-all duration-300 ${isCollapsed ? 'w-12 h-12' : 'w-full h-14'}`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={logoSrc}
-                  alt={logoAlt}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            ) : (
-              <span
-                className={`font-bold text-[var(--accent)] transition-all duration-300 ${isCollapsed ? 'text-lg' : 'text-2xl'}`}
-              >
-                {isCollapsed ? 'SC' : portalTitle}
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, var(--accent), var(--accent-hover, var(--accent)))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Zap size={18} style={{ color: '#fff' }} />
+            </div>
+            {!isCollapsed && (
+              <span style={{ fontWeight: 800, fontSize: '1.125rem', fontStyle: 'italic', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                {portalTitle}
               </span>
             )}
           </Link>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-6">
-            {navSections.map((section) => (
-              <div key={section.label}>
-                {!isCollapsed && (
-                  <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] select-none">
+          {/* ── Navigation ── */}
+          <nav style={{ flex: 1, overflowY: 'auto', padding: isCollapsed ? '12px 8px' : '12px 12px', transition: 'padding 0.3s ease' }}>
+            {navSections.map((section, sIdx) => (
+              <div key={section.label} style={{ marginBottom: 8 }}>
+                {/* Section Label */}
+                {!isCollapsed ? (
+                  <div
+                    style={{
+                      padding: '8px 12px 4px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      color: 'var(--text-muted)',
+                      userSelect: 'none',
+                    }}
+                  >
                     {section.label}
-                  </p>
+                  </div>
+                ) : (
+                  sIdx > 0 && (
+                    <div style={{ margin: '8px auto', width: 24, borderTop: '1px solid var(--border)' }} />
+                  )
                 )}
-                {isCollapsed && (
-                  <div className="mx-auto mb-2 w-6 border-t border-[var(--border)]" />
-                )}
-                <div className="space-y-1">
+
+                {/* Section Items */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {section.items.map((item) => {
                     const isActive =
                       pathname === item.href ||
@@ -188,21 +249,38 @@ export function SharedShell({
                       <Link
                         key={item.href}
                         href={item.href}
-                        onClick={() => setIsMobileOpen(false)}
                         title={isCollapsed ? item.title : undefined}
-                        className={`
-                          flex items-center gap-3 p-3 rounded-xl transition-all
-                          ${
-                            isActive
-                              ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20'
-                              : 'text-[var(--text-muted)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)]'
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: isCollapsed ? '10px 0' : '10px 12px',
+                          justifyContent: isCollapsed ? 'center' : 'flex-start',
+                          borderRadius: 10,
+                          fontSize: '0.875rem',
+                          fontWeight: isActive ? 600 : 500,
+                          textDecoration: 'none',
+                          transition: 'all 0.15s ease',
+                          color: isActive ? '#fff' : 'var(--text-muted)',
+                          backgroundColor: isActive ? 'var(--accent)' : 'transparent',
+                          boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-primary)'
+                            e.currentTarget.style.color = 'var(--text-primary)'
                           }
-                          ${isCollapsed ? 'justify-center' : ''}
-                        `}
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                            e.currentTarget.style.color = 'var(--text-muted)'
+                          }
+                        }}
                       >
-                        <div className="shrink-0">{item.icon}</div>
+                        <div style={{ flexShrink: 0, display: 'flex' }}>{item.icon}</div>
                         {!isCollapsed && (
-                          <span className="font-medium whitespace-nowrap">
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {item.title}
                           </span>
                         )}
@@ -214,37 +292,101 @@ export function SharedShell({
             ))}
           </nav>
 
-          {/* Footer */}
+          {/* ── Footer ── */}
           <div
-            className={`p-4 border-t border-[var(--border)] space-y-2 ${isCollapsed ? 'flex flex-col items-center' : ''}`}
+            style={{
+              padding: isCollapsed ? '12px 8px' : '12px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              transition: 'padding 0.3s ease',
+            }}
           >
             {/* Theme Toggle */}
-            <div className={`flex ${isCollapsed ? 'justify-center' : 'px-3'} mb-2`}>
+            <div style={{ display: 'flex', justifyContent: isCollapsed ? 'center' : 'flex-start', padding: isCollapsed ? '8px 0' : '8px 12px', marginBottom: 4 }}>
               <ThemeToggle />
             </div>
 
-            {footerLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={isCollapsed ? item.title : undefined}
-                className={`flex items-center gap-3 p-3 rounded-xl text-[var(--text-muted)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)] transition-all ${isCollapsed ? 'justify-center' : ''}`}
-              >
-                <div className="shrink-0">{item.icon}</div>
-                {!isCollapsed && (
-                  <span className="font-medium">{item.title}</span>
-                )}
-              </Link>
-            ))}
+            {/* Footer Links */}
+            {footerLinks.map((item) => {
+              const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href))
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={isCollapsed ? item.title : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: isCollapsed ? '10px 0' : '10px 12px',
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    borderRadius: 10,
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    backgroundColor: isActive ? 'var(--accent)' : 'transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ flexShrink: 0, display: 'flex' }}>{item.icon}</div>
+                  {!isCollapsed && <span>{item.title}</span>}
+                </Link>
+              )
+            })}
 
+            {/* Collapse Toggle (Desktop) */}
+            <button
+              onClick={toggle}
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="collapse-toggle-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: isCollapsed ? '10px 0' : '10px 12px',
+                justifyContent: isCollapsed ? 'center' : 'flex-start',
+                borderRadius: 10,
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                width: '100%',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+              {!isCollapsed && <span>Collapse</span>}
+            </button>
+
+            {/* Sign Out */}
             {onSignOut && (
               <button
                 onClick={onSignOut}
                 title={isCollapsed ? 'Log Out' : undefined}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all ${isCollapsed ? 'justify-center' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: isCollapsed ? '10px 0' : '10px 12px',
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  borderRadius: 10,
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  width: '100%',
+                  transition: 'all 0.15s ease',
+                }}
               >
-                <LogOut size={20} className="shrink-0" />
-                {!isCollapsed && <span className="font-medium">Log Out</span>}
+                <LogOut size={20} style={{ flexShrink: 0 }} />
+                {!isCollapsed && <span>Log Out</span>}
               </button>
             )}
           </div>
@@ -252,16 +394,42 @@ export function SharedShell({
 
         {/* ─── Main Content ─── */}
         <main
-          className={`
-            flex-1 transition-all duration-300 ease-in-out
-            ${isCollapsed ? 'lg:pl-20' : 'lg:pl-72'}
-          `}
+          style={{
+            flex: 1,
+            marginLeft: mounted ? sidebarWidth : SIDEBAR_EXPANDED,
+            transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            minWidth: 0,
+          }}
+          className="main-content"
         >
-          <div className="p-8 lg:p-12 max-w-[1600px] mx-auto">
+          <div style={{ padding: '32px', maxWidth: 1600, margin: '0 auto' }} className="main-content-inner">
             {children}
           </div>
         </main>
       </div>
+
+      {/* ─── Responsive Styles ─── */}
+      <style>{`
+        @media (max-width: 1023px) {
+          .mobile-menu-btn {
+            display: flex !important;
+          }
+          .sidebar-aside {
+            width: ${SIDEBAR_EXPANDED}px !important;
+            transform: ${isMobileOpen ? 'translateX(0)' : 'translateX(-100%)'} !important;
+          }
+          .main-content {
+            margin-left: 0 !important;
+          }
+          .main-content-inner {
+            padding: 20px !important;
+            padding-top: 64px !important;
+          }
+          .collapse-toggle-btn {
+            display: none !important;
+          }
+        }
+      `}</style>
     </SidebarContext.Provider>
   )
 }

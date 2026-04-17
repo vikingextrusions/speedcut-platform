@@ -180,7 +180,7 @@ export function SharedShell({
         >
           {/* ── Logo / Branding ── */}
           <Link
-            href="/"
+            href="/dashboard"
             style={{
               display: 'flex',
               alignItems: 'center',

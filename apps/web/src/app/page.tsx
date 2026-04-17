@@ -4,7 +4,14 @@ import { MarketingHeader } from '@/components/marketing-header'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      data-theme="dark"
+      className="min-h-screen flex flex-col"
+      style={{
+        backgroundColor: '#080c18',
+        color: '#e8eaf0',
+      }}
+    >
       <MarketingHeader />
 
       {/* ─── Hero ─── */}

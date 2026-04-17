@@ -168,6 +168,8 @@ export function MarketingHeader() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const headerRef = useRef<HTMLElement>(null)
 
+  const isAnyMenuOpen = activeMenu !== null
+
   // Track scroll for background
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -186,18 +188,30 @@ export function MarketingHeader() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveMenu(null)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
   const handleEnter = (label: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setActiveMenu(label)
   }
 
   const handleLeave = () => {
-    timeoutRef.current = setTimeout(() => setActiveMenu(null), 200)
+    timeoutRef.current = setTimeout(() => setActiveMenu(null), 150)
   }
 
-  const handleMenuEnter = () => {
+  const cancelLeave = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
   }
+
+  // Find active dropdown data
+  const activeDropdown = navDropdowns.find((d) => d.label === activeMenu)
 
   return (
     <header
@@ -208,223 +222,241 @@ export function MarketingHeader() {
         left: 0,
         right: 0,
         zIndex: 100,
-        transition: 'all 0.3s ease',
-        backgroundColor: scrolled ? 'rgba(8, 12, 24, 0.95)' : 'rgba(8, 12, 24, 0.6)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent',
       }}
     >
       {/* ─── Top Bar ─── */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
-          {/* Logo */}
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Zap size={20} style={{ color: '#fff' }} />
-            </div>
-            <span style={{ fontWeight: 800, fontSize: '1.25rem', fontStyle: 'italic', color: '#fff' }}>Speedcut</span>
-          </Link>
-
-          {/* Desktop Nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="desktop-nav">
-            {navDropdowns.map((dropdown) => (
-              <div
-                key={dropdown.label}
-                onMouseEnter={() => handleEnter(dropdown.label)}
-                onMouseLeave={handleLeave}
-                style={{ position: 'relative' }}
-              >
-                <button
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '8px 16px',
-                    borderRadius: 8,
-                    border: 'none',
-                    background: activeMenu === dropdown.label ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    color: activeMenu === dropdown.label ? '#fff' : 'rgba(255,255,255,0.7)',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {dropdown.label}
-                  <ChevronDown
-                    size={14}
-                    style={{
-                      transition: 'transform 0.2s ease',
-                      transform: activeMenu === dropdown.label ? 'rotate(180deg)' : 'rotate(0deg)',
-                    }}
-                  />
-                </button>
-              </div>
-            ))}
-          </nav>
-
-          {/* Right Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="desktop-actions">
-            <Link
-              href="/login"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', fontWeight: 500,
-                textDecoration: 'none', borderRadius: 8, transition: 'color 0.15s ease',
-              }}
-            >
-              <LogIn size={16} />
-              Sign In
-            </Link>
-            <Link
-              href="/quotes/new"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px',
+      <div
+        style={{
+          backgroundColor: scrolled || isAnyMenuOpen ? '#080c18' : 'rgba(8, 12, 24, 0.85)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          transition: 'background-color 0.3s ease',
+        }}
+      >
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
+            {/* Logo */}
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
                 background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
-                color: '#fff', fontSize: '0.875rem', fontWeight: 600,
-                borderRadius: 10, textDecoration: 'none',
-                boxShadow: '0 2px 12px rgba(0,217,225,0.3)',
-                transition: 'all 0.2s ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Zap size={20} style={{ color: '#fff' }} />
+              </div>
+              <span style={{ fontWeight: 800, fontSize: '1.25rem', fontStyle: 'italic', color: '#fff' }}>Speedcut</span>
+            </Link>
+
+            {/* Desktop Nav */}
+            <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="desktop-nav">
+              {navDropdowns.map((dropdown) => (
+                <div
+                  key={dropdown.label}
+                  onMouseEnter={() => handleEnter(dropdown.label)}
+                  onMouseLeave={handleLeave}
+                >
+                  <button
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: activeMenu === dropdown.label ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: activeMenu === dropdown.label ? '#fff' : 'rgba(255,255,255,0.7)',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {dropdown.label}
+                    <ChevronDown
+                      size={14}
+                      style={{
+                        transition: 'transform 0.2s ease',
+                        transform: activeMenu === dropdown.label ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    />
+                  </button>
+                </div>
+              ))}
+            </nav>
+
+            {/* Right Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="desktop-actions">
+              <Link
+                href="/login"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                  color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', fontWeight: 500,
+                  textDecoration: 'none', borderRadius: 8, transition: 'color 0.15s ease',
+                }}
+              >
+                <LogIn size={16} />
+                Sign In
+              </Link>
+              <Link
+                href="/quotes/new"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px',
+                  background: 'linear-gradient(135deg, var(--accent), #00b4d8)',
+                  color: '#fff', fontSize: '0.875rem', fontWeight: 600,
+                  borderRadius: 10, textDecoration: 'none',
+                  boxShadow: '0 2px 12px rgba(0,217,225,0.3)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                Get a Quote
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            {/* Mobile Toggle */}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="mobile-toggle"
+              style={{
+                display: 'none', padding: 8, borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'transparent', color: '#fff', cursor: 'pointer',
               }}
             >
-              Get a Quote
-              <ArrowRight size={16} />
-            </Link>
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
           </div>
-
-          {/* Mobile Toggle */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="mobile-toggle"
-            style={{
-              display: 'none', padding: 8, borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'transparent', color: '#fff', cursor: 'pointer',
-            }}
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
         </div>
       </div>
 
-      {/* ─── Mega Menu Dropdown (Desktop) ─── */}
-      {navDropdowns.map((dropdown) => (
-        <div
-          key={dropdown.label}
-          onMouseEnter={handleMenuEnter}
-          onMouseLeave={handleLeave}
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            backgroundColor: 'rgba(12, 16, 32, 0.98)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            overflow: 'hidden',
-            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            maxHeight: activeMenu === dropdown.label ? 500 : 0,
-            opacity: activeMenu === dropdown.label ? 1 : 0,
-            pointerEvents: activeMenu === dropdown.label ? 'auto' : 'none',
-          }}
-          className="mega-menu-panel"
-        >
-          <div style={{ maxWidth: 1400, margin: '0 auto', padding: '32px', display: 'flex', gap: 48 }}>
-            {/* Columns */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${dropdown.columns.length}, 1fr)`, gap: 48 }}>
-              {dropdown.columns.map((col) => (
-                <div key={col.heading}>
-                  <div style={{
-                    fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
-                    color: 'var(--accent)', marginBottom: 16, paddingLeft: 4,
-                  }}>
-                    {col.heading}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {col.items.map((item) => (
-                      <Link
-                        key={item.title}
-                        href={item.href}
-                        onClick={() => setActiveMenu(null)}
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 12px',
-                          borderRadius: 10, textDecoration: 'none', color: 'inherit',
-                          transition: 'background-color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
-                      >
+      {/* ─── Single Mega Menu Panel (Desktop) ─── */}
+      <div
+        onMouseEnter={cancelLeave}
+        onMouseLeave={handleLeave}
+        className="mega-menu-panel"
+        style={{
+          backgroundColor: '#0a0e1e',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          overflow: 'hidden',
+          transition: 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease',
+          maxHeight: isAnyMenuOpen ? 480 : 0,
+          opacity: isAnyMenuOpen ? 1 : 0,
+        }}
+      >
+        {/* Content container - renders all dropdowns, only active one visible */}
+        <div style={{ position: 'relative' }}>
+          {navDropdowns.map((dropdown) => {
+            const isActive = activeMenu === dropdown.label
+            return (
+              <div
+                key={dropdown.label}
+                style={{
+                  position: isActive ? 'relative' : 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  opacity: isActive ? 1 : 0,
+                  pointerEvents: isActive ? 'auto' : 'none',
+                  transition: 'opacity 0.2s ease',
+                  visibility: isActive ? 'visible' : 'hidden',
+                }}
+              >
+                <div style={{ maxWidth: 1400, margin: '0 auto', padding: '32px', display: 'flex', gap: 48 }}>
+                  {/* Columns */}
+                  <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${dropdown.columns.length}, 1fr)`, gap: 48 }}>
+                    {dropdown.columns.map((col) => (
+                      <div key={col.heading}>
                         <div style={{
-                          padding: 8, borderRadius: 8,
-                          backgroundColor: 'rgba(255,255,255,0.04)',
-                          color: 'var(--accent)', flexShrink: 0, marginTop: 2,
+                          fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
+                          color: 'var(--accent)', marginBottom: 16, paddingLeft: 4,
                         }}>
-                          {item.icon}
+                          {col.heading}
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#fff', marginBottom: 2 }}>
-                            {item.title}
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.4 }}>
-                            {item.description}
-                          </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {col.items.map((item) => (
+                            <Link
+                              key={item.title}
+                              href={item.href}
+                              onClick={() => setActiveMenu(null)}
+                              style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 12px',
+                                borderRadius: 10, textDecoration: 'none', color: 'inherit',
+                                transition: 'background-color 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                            >
+                              <div style={{
+                                padding: 8, borderRadius: 8,
+                                backgroundColor: 'rgba(255,255,255,0.04)',
+                                color: 'var(--accent)', flexShrink: 0, marginTop: 2,
+                              }}>
+                                {item.icon}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#fff', marginBottom: 2 }}>
+                                  {item.title}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.4 }}>
+                                  {item.description}
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
                         </div>
-                      </Link>
+                      </div>
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Featured Banner */}
-            {dropdown.featured && (
-              <div style={{ width: 280, flexShrink: 0 }}>
-                <Link
-                  href={dropdown.featured.href}
-                  onClick={() => setActiveMenu(null)}
-                  style={{
-                    display: 'block', padding: 24, borderRadius: 16,
-                    background: 'linear-gradient(145deg, rgba(0,217,225,0.12), rgba(0,180,216,0.06))',
-                    border: '1px solid rgba(0,217,225,0.15)',
-                    textDecoration: 'none', color: 'inherit',
-                    transition: 'border-color 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,217,225,0.4)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(0,217,225,0.15)' }}
-                >
-                  {dropdown.featured.tag && (
-                    <span style={{
-                      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-                      backgroundColor: 'var(--accent)', color: '#000',
-                      fontSize: 11, fontWeight: 700, marginBottom: 12,
-                    }}>
-                      {dropdown.featured.tag}
-                    </span>
+                  {/* Featured Banner */}
+                  {dropdown.featured && (
+                    <div style={{ width: 280, flexShrink: 0 }}>
+                      <Link
+                        href={dropdown.featured.href}
+                        onClick={() => setActiveMenu(null)}
+                        style={{
+                          display: 'block', padding: 24, borderRadius: 16,
+                          background: 'linear-gradient(145deg, rgba(0,217,225,0.12), rgba(0,180,216,0.06))',
+                          border: '1px solid rgba(0,217,225,0.15)',
+                          textDecoration: 'none', color: 'inherit',
+                          transition: 'border-color 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,217,225,0.4)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(0,217,225,0.15)' }}
+                      >
+                        {dropdown.featured.tag && (
+                          <span style={{
+                            display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+                            backgroundColor: 'var(--accent)', color: '#000',
+                            fontSize: 11, fontWeight: 700, marginBottom: 12,
+                          }}>
+                            {dropdown.featured.tag}
+                          </span>
+                        )}
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', marginBottom: 8 }}>
+                          {dropdown.featured.title}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: 16 }}>
+                          {dropdown.featured.description}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 600 }}>
+                          Learn more <ArrowRight size={14} />
+                        </div>
+                      </Link>
+                    </div>
                   )}
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', marginBottom: 8 }}>
-                    {dropdown.featured.title}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: 16 }}>
-                    {dropdown.featured.description}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 600 }}>
-                    Learn more <ArrowRight size={14} />
-                  </div>
-                </Link>
+                </div>
               </div>
-            )}
-          </div>
+            )
+          })}
         </div>
-      ))}
+      </div>
 
       {/* ─── Mobile Menu ─── */}
       <div
         className="mobile-menu"
         style={{
+          backgroundColor: '#080c18',
           maxHeight: mobileOpen ? '80vh' : 0,
           overflow: mobileOpen ? 'auto' : 'hidden',
           transition: 'max-height 0.3s ease',

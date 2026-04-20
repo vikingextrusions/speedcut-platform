@@ -18,6 +18,21 @@ export async function login(formData: FormData) {
     redirect('/login?message=Could not authenticate user')
   }
 
+  // Verify user has admin role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || profile.role !== 'admin') {
+      await supabase.auth.signOut()
+      redirect('/unauthorized')
+    }
+  }
+
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }

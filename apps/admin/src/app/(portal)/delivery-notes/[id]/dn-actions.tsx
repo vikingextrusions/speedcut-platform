@@ -20,8 +20,6 @@ export function DNStatusActions({ dnId, currentStatus }: { dnId: string; current
     setLoading(true)
     const supabase = createClient()
     const update: any = { status: nextStatus }
-    if (nextStatus === 'dispatched') update.dispatch_date = new Date().toISOString().split('T')[0]
-    if (nextStatus === 'delivered') update.delivery_date = new Date().toISOString().split('T')[0]
     const { error } = await supabase.from('delivery_notes').update(update).eq('id', dnId)
     if (error) alert('Error: ' + error.message)
     else router.refresh()

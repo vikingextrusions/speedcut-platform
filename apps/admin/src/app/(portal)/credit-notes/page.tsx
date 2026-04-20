@@ -15,7 +15,7 @@ export default async function AdminCreditNotesPage() {
   const { data: creditNotes } = await supabase
     .from('credit_notes')
     .select(`
-      id, cn_number, status, total_amount, credit_date, reason,
+      id, credit_note_number, status, total_amount, date, notes,
       invoices(invoice_number),
       organizations!credit_notes_customer_org_id_fkey(name)
     `)
@@ -37,7 +37,7 @@ export default async function AdminCreditNotesPage() {
                   <th style={thStyle}>CN #</th>
                   <th style={thStyle}>Customer</th>
                   <th style={thStyle}>Invoice</th>
-                  <th style={thStyle}>Reason</th>
+                  <th style={thStyle}>Notes</th>
                   <th style={thStyle}>Amount</th>
                   <th style={thStyle}>Date</th>
                   <th style={thStyle}>Status</th>
@@ -47,13 +47,13 @@ export default async function AdminCreditNotesPage() {
                 {creditNotes.map((cn: any) => (
                   <tr key={cn.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={tdStyle}>
-                      <Link href={`/credit-notes/${cn.id}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>{cn.cn_number}</Link>
+                      <Link href={`/credit-notes/${cn.id}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>{cn.credit_note_number}</Link>
                     </td>
                     <td style={tdStyle}>{cn.organizations?.name || '—'}</td>
                     <td style={tdStyle}>{cn.invoices?.invoice_number || '—'}</td>
-                    <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cn.reason || '—'}</td>
+                    <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cn.notes || '—'}</td>
                     <td style={{ ...tdStyle, fontWeight: 700, color: '#ef4444' }}>-£{cn.total_amount.toFixed(2)}</td>
-                    <td style={tdStyle}>{new Date(cn.credit_date).toLocaleDateString()}</td>
+                    <td style={tdStyle}>{cn.date ? new Date(cn.date).toLocaleDateString() : '—'}</td>
                     <td style={tdStyle}><StatusBadge status={cn.status} /></td>
                   </tr>
                 ))}

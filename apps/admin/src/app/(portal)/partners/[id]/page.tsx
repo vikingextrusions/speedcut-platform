@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { StatusBadge } from '@speedcut/ui/status-badge'
 import { PageHeader } from '@speedcut/ui/page-header'
 import { DetailLayout } from '@speedcut/ui/detail-layout'
-import { Mail, Phone, Globe, MapPin, FileCheck, Package } from 'lucide-react'
+import { Mail, Phone, Globe, FileCheck, Package } from 'lucide-react'
 
 export default async function AdminPartnerDetailPage({
   params,
@@ -16,7 +16,7 @@ export default async function AdminPartnerDetailPage({
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, name, type, account_ref, website, phone, email, address, notes, is_active, created_at')
+    .select('id, name, type, account_ref, website, notes, status, created_at')
     .eq('id', id)
     .single()
 
@@ -31,8 +31,8 @@ export default async function AdminPartnerDetailPage({
   // Fetch partner capabilities
   const { data: capabilities } = await supabase
     .from('partner_capabilities')
-    .select('id, process, materials, max_size, certifications, lead_time_days')
-    .eq('partner_org_id', id)
+    .select('id, process_id, materials, lead_time_days, min_order_value, max_capacity_note, quality_certs, manufacturing_processes(name)')
+    .eq('organization_id', id)
 
   // Fetch recent assignments
   const { data: recentAssignments } = await supabase
@@ -60,7 +60,7 @@ export default async function AdminPartnerDetailPage({
         subtitle={`${org.account_ref || 'No account ref'} · Partner since ${new Date(org.created_at).toLocaleDateString()}`}
         backHref="/partners"
         backLabel="Back to Partners"
-        badge={<StatusBadge status={org.is_active !== false ? 'active' : 'inactive'} />}
+        badge={<StatusBadge status={org.status || 'active'} />}
       />
 
       <DetailLayout
@@ -71,28 +71,10 @@ export default async function AdminPartnerDetailPage({
             <div className="card">
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Organisation</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
-                {org.email && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Mail size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    <a href={`mailto:${org.email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{org.email}</a>
-                  </div>
-                )}
-                {org.phone && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Phone size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    <span>{org.phone}</span>
-                  </div>
-                )}
                 {org.website && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Globe size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <a href={org.website} target="_blank" rel="noopener" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{org.website}</a>
-                  </div>
-                )}
-                {org.address && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <MapPin size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '0.125rem' }} />
-                    <span style={{ whiteSpace: 'pre-line' }}>{org.address}</span>
                   </div>
                 )}
               </div>
@@ -106,8 +88,16 @@ export default async function AdminPartnerDetailPage({
                   {contacts.map((c: any) => (
                     <div key={c.id} style={{ padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: 'var(--bg-primary)', fontSize: '0.85rem' }}>
                       <div style={{ fontWeight: 600 }}>{c.full_name || '—'}</div>
-                      {c.email && <div style={{ color: 'var(--text-muted)', marginTop: '0.125rem' }}>{c.email}</div>}
-                      {c.phone && <div style={{ color: 'var(--text-muted)', marginTop: '0.125rem' }}>{c.phone}</div>}
+                      {c.email && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                          <Mail size={12} /> {c.email}
+                        </div>
+                      )}
+                      {c.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                          <Phone size={12} /> {c.phone}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -134,12 +124,13 @@ export default async function AdminPartnerDetailPage({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1px', backgroundColor: 'var(--border)' }}>
               {caps.map((cap: any) => (
                 <div key={cap.id} style={{ padding: '1.25rem 1.5rem', backgroundColor: 'var(--bg-card)' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>{cap.process}</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>{cap.manufacturing_processes?.name || '—'}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     {cap.materials && <span>Materials: {Array.isArray(cap.materials) ? cap.materials.join(', ') : cap.materials}</span>}
-                    {cap.max_size && <span>Max Size: {cap.max_size}</span>}
                     {cap.lead_time_days && <span>Lead Time: {cap.lead_time_days} days</span>}
-                    {cap.certifications && <span>Certs: {Array.isArray(cap.certifications) ? cap.certifications.join(', ') : cap.certifications}</span>}
+                    {cap.min_order_value && <span>Min Order: £{Number(cap.min_order_value).toFixed(2)}</span>}
+                    {cap.quality_certs && <span>Certs: {Array.isArray(cap.quality_certs) ? cap.quality_certs.join(', ') : cap.quality_certs}</span>}
+                    {cap.max_capacity_note && <span>Capacity: {cap.max_capacity_note}</span>}
                   </div>
                 </div>
               ))}

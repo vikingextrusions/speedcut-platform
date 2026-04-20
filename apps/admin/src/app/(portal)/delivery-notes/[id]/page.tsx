@@ -17,8 +17,8 @@ export default async function AdminDNDetailPage({
   const { data: dn } = await supabase
     .from('delivery_notes')
     .select(`
-      id, dn_number, status, delivery_date, dispatch_date, shipped_via, tracking_number,
-      delivery_address, special_instructions, notes, created_at,
+      id, dn_number, status, delivery_date, shipped_via, tracking_number,
+      delivery_address, notes, created_at,
       orders(id, order_number, organizations!orders_customer_org_id_fkey(name)),
       delivery_note_lines(id, description, quantity, sort_order),
       delivery_signatures(id, signer_name, signed_at)
@@ -29,7 +29,7 @@ export default async function AdminDNDetailPage({
   if (!dn) notFound()
 
   const lines = (dn.delivery_note_lines as any[])?.sort((a: any, b: any) => a.sort_order - b.sort_order) || []
-  const signatures = (dn.delivery_signatures as any[]) || []
+  const signatures = (dn.delivery_signatures as unknown as any[]) || []
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
@@ -51,7 +51,6 @@ export default async function AdminDNDetailPage({
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Delivery Info</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
                 <Row label="Delivery Date" value={dn.delivery_date ? new Date(dn.delivery_date).toLocaleDateString() : '—'} />
-                <Row label="Dispatched" value={dn.dispatch_date ? new Date(dn.dispatch_date).toLocaleDateString() : '—'} />
                 <Row label="Shipped Via" value={dn.shipped_via || '—'} />
                 <Row label="Tracking" value={dn.tracking_number || '—'} />
               </div>
@@ -117,20 +116,10 @@ export default async function AdminDNDetailPage({
           )}
         </div>
 
-        {(dn.special_instructions || dn.notes) && (
+        {dn.notes && (
           <div className="card">
-            {dn.special_instructions && (
-              <div style={{ marginBottom: dn.notes ? '1.5rem' : 0 }}>
-                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Special Instructions</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>{dn.special_instructions}</p>
-              </div>
-            )}
-            {dn.notes && (
-              <div>
-                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Notes</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>{dn.notes}</p>
-              </div>
-            )}
+            <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Notes</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>{dn.notes}</p>
           </div>
         )}
       </DetailLayout>

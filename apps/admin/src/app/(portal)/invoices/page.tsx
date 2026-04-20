@@ -16,8 +16,8 @@ export default async function AdminInvoicesPage() {
   const { data: invoices } = await supabase
     .from('invoices')
     .select(`
-      id, invoice_number, status, subtotal, vat_amount, total_amount, invoice_date, due_date, paid_date,
-      organizations!invoices_customer_org_id_fkey(name)
+      id, invoice_number, status, subtotal, vat_amount, total_amount, invoice_date, due_date,
+      orders(organizations!orders_customer_org_id_fkey(name))
     `)
     .order('created_at', { ascending: false })
 
@@ -52,7 +52,7 @@ export default async function AdminInvoicesPage() {
                       <td style={tdStyle}>
                         <Link href={`/invoices/${inv.id}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>{inv.invoice_number}</Link>
                       </td>
-                      <td style={tdStyle}>{inv.organizations?.name || '—'}</td>
+                      <td style={tdStyle}>{inv.orders?.organizations?.name || '—'}</td>
                       <td style={tdStyle}>{new Date(inv.invoice_date).toLocaleDateString()}</td>
                       <td style={{ ...tdStyle, color: isOverdue ? '#ef4444' : undefined, fontWeight: isOverdue ? 700 : undefined }}>
                         {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}

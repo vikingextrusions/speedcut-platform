@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   const { count: unreadCount } = await supabase
     .from('notifications')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', user!.id)
+    .eq('recipient_id', user!.id)
     .eq('is_read', false)
 
   // Recent quotes
@@ -99,8 +99,8 @@ export default async function DashboardPage() {
   // Recent notifications
   const { data: recentNotifications } = await supabase
     .from('notifications')
-    .select('id, title, body, is_read, entity_type, created_at')
-    .eq('user_id', user!.id)
+    .select('id, title, body, is_read, type, link, created_at')
+    .eq('recipient_id', user!.id)
     .order('created_at', { ascending: false })
     .limit(5)
 

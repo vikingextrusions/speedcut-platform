@@ -11,23 +11,15 @@ type Notification = {
   title: string
   body: string | null
   is_read: boolean
-  entity_type: string | null
-  entity_id: string | null
+  link: string | null
   created_at: string
 }
 
-const entityIcons: Record<string, React.ReactNode> = {
+const typeIcons: Record<string, React.ReactNode> = {
   quote: <FileText size={16} />,
   order: <Package size={16} />,
   invoice: <Receipt size={16} />,
-  delivery_note: <Truck size={16} />,
-}
-
-const entityRoutes: Record<string, string> = {
-  quote: '/quotes',
-  order: '/orders',
-  invoice: '/invoices',
-  delivery_note: '/delivery-notes',
+  delivery: <Truck size={16} />,
 }
 
 export function NotificationList({ notifications: initial }: { notifications: Notification[] }) {
@@ -56,8 +48,8 @@ export function NotificationList({ notifications: initial }: { notifications: No
 
   const handleClick = (n: Notification) => {
     if (!n.is_read) markAsRead(n.id)
-    if (n.entity_type && n.entity_id && entityRoutes[n.entity_type]) {
-      router.push(`${entityRoutes[n.entity_type]}/${n.entity_id}`)
+    if (n.link) {
+      router.push(n.link)
     }
   }
 
@@ -85,7 +77,7 @@ export function NotificationList({ notifications: initial }: { notifications: No
             style={{
               padding: '1rem 1.5rem',
               borderBottom: idx < notifications.length - 1 ? '1px solid var(--border)' : 'none',
-              cursor: n.entity_type ? 'pointer' : 'default',
+              cursor: n.link ? 'pointer' : 'default',
               backgroundColor: n.is_read ? 'transparent' : 'var(--accent-glow)',
               transition: 'background-color 0.15s',
               display: 'flex',
@@ -100,7 +92,7 @@ export function NotificationList({ notifications: initial }: { notifications: No
               backgroundColor: n.is_read ? 'var(--bg-primary)' : 'var(--accent-glow)',
               color: n.is_read ? 'var(--text-muted)' : 'var(--accent)',
             }}>
-              {n.entity_type && entityIcons[n.entity_type] ? entityIcons[n.entity_type] : <Bell size={16} />}
+              {n.type && typeIcons[n.type] ? typeIcons[n.type] : <Bell size={16} />}
             </div>
 
             {/* Content */}

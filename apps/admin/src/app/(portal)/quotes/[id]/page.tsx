@@ -18,9 +18,9 @@ export default async function AdminQuoteDetailPage({
     .from('quotes')
     .select(`
       id, quote_number, status, subtotal, vat_amount, total_amount, quote_date, valid_until,
-      customer_reference, material_type, notes, internal_notes, currency, vat_rate, created_at,
+      customer_reference, material_type, notes, internal_notes, vat_rate, created_at,
       organizations!quotes_customer_org_id_fkey(id, name),
-      contacts(id, full_name, email, phone),
+      profiles!quotes_contact_id_fkey(id, full_name, email, phone),
       quote_items(id, description, material, material_type, quantity, unit_price, total_price, lead_time, sort_order),
       quote_assignments(id, status, partner_price, notes, responded_at, created_at,
         organizations!quote_assignments_partner_org_id_fkey(name)
@@ -71,8 +71,8 @@ export default async function AdminQuoteDetailPage({
                 <Row label="Material" value={quote.material_type || '—'} />
                 <Row label="Valid Until" value={quote.valid_until ? new Date(quote.valid_until).toLocaleDateString() : '—'} />
                 <Row label="Created" value={new Date(quote.created_at).toLocaleDateString()} />
-                {(quote.contacts as any)?.full_name && (
-                  <Row label="Contact" value={(quote.contacts as any).full_name} />
+                {(quote.profiles as any)?.full_name && (
+                  <Row label="Contact" value={(quote.profiles as any).full_name} />
                 )}
               </div>
             </div>

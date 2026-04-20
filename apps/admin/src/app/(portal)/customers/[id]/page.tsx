@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { StatusBadge } from '@speedcut/ui/status-badge'
 import { PageHeader } from '@speedcut/ui/page-header'
 import { DetailLayout } from '@speedcut/ui/detail-layout'
-import { Building2, Mail, Phone, Globe, MapPin, FileText, Package, Receipt } from 'lucide-react'
+import { Building2, Mail, Phone, Globe, FileText, Package, Receipt } from 'lucide-react'
 
 export default async function AdminCustomerDetailPage({
   params,
@@ -16,7 +16,7 @@ export default async function AdminCustomerDetailPage({
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, name, type, account_ref, website, phone, email, address, notes, is_active, created_at')
+    .select('id, name, type, account_ref, vat_number, website, payment_terms, notes, status, created_at')
     .eq('id', id)
     .single()
 
@@ -44,11 +44,11 @@ export default async function AdminCustomerDetailPage({
     .order('created_at', { ascending: false })
     .limit(10)
 
-  // Fetch recent invoices
+  // Fetch recent invoices via orders
   const { data: recentInvoices } = await supabase
     .from('invoices')
-    .select('id, invoice_number, status, total_amount, invoice_date, due_date')
-    .eq('customer_org_id', id)
+    .select('id, invoice_number, status, total_amount, invoice_date, due_date, orders!inner(customer_org_id)')
+    .eq('orders.customer_org_id', id)
     .order('created_at', { ascending: false })
     .limit(10)
 
@@ -61,7 +61,7 @@ export default async function AdminCustomerDetailPage({
         subtitle={`${org.account_ref || 'No account ref'} · Customer since ${new Date(org.created_at).toLocaleDateString()}`}
         backHref="/customers"
         backLabel="Back to Customers"
-        badge={<StatusBadge status={org.is_active !== false ? 'active' : 'inactive'} />}
+        badge={<StatusBadge status={org.status || 'active'} />}
       />
 
       <DetailLayout
@@ -72,16 +72,10 @@ export default async function AdminCustomerDetailPage({
             <div className="card">
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Organisation</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
-                {org.email && (
+                {org.vat_number && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Mail size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    <a href={`mailto:${org.email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{org.email}</a>
-                  </div>
-                )}
-                {org.phone && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Phone size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    <span>{org.phone}</span>
+                    <Building2 size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    <span>VAT: {org.vat_number}</span>
                   </div>
                 )}
                 {org.website && (
@@ -90,10 +84,9 @@ export default async function AdminCustomerDetailPage({
                     <a href={org.website} target="_blank" rel="noopener" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{org.website}</a>
                   </div>
                 )}
-                {org.address && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <MapPin size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '0.125rem' }} />
-                    <span style={{ whiteSpace: 'pre-line' }}>{org.address}</span>
+                {org.payment_terms && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Payment Terms: {org.payment_terms}
                   </div>
                 )}
               </div>
@@ -107,8 +100,16 @@ export default async function AdminCustomerDetailPage({
                   {contacts.map((c: any) => (
                     <div key={c.id} style={{ padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: 'var(--bg-primary)', fontSize: '0.85rem' }}>
                       <div style={{ fontWeight: 600 }}>{c.full_name || '—'}</div>
-                      {c.email && <div style={{ color: 'var(--text-muted)', marginTop: '0.125rem' }}>{c.email}</div>}
-                      {c.phone && <div style={{ color: 'var(--text-muted)', marginTop: '0.125rem' }}>{c.phone}</div>}
+                      {c.email && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                          <Mail size={12} /> {c.email}
+                        </div>
+                      )}
+                      {c.phone && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                          <Phone size={12} /> {c.phone}
+                        </div>
+                      )}
                       {c.orgRole && <span className="badge badge-info" style={{ marginTop: '0.25rem' }}>{c.orgRole}</span>}
                     </div>
                   ))}

@@ -25,7 +25,7 @@ export default async function AdminQuotesPage({
     .select(`
       id, quote_number, status, subtotal, total_amount, quote_date, valid_until, customer_reference, material_type,
       organizations!quotes_customer_org_id_fkey(name),
-      contacts(full_name)
+      profiles!quotes_contact_id_fkey(full_name)
     `)
     .order('created_at', { ascending: false })
 
@@ -80,7 +80,7 @@ export default async function AdminQuotesPage({
                       <Link href={`/quotes/${q.id}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>{q.quote_number}</Link>
                     </td>
                     <td style={tdStyle}>{q.organizations?.name || '—'}</td>
-                    <td style={tdStyle}><span style={{ color: 'var(--text-muted)' }}>{q.contacts?.full_name || '—'}</span></td>
+                    <td style={tdStyle}><span style={{ color: 'var(--text-muted)' }}>{q.profiles?.full_name || '—'}</span></td>
                     <td style={tdStyle}><span style={{ color: 'var(--text-muted)' }}>{q.material_type || '—'}</span></td>
                     <td style={tdStyle}>£{q.subtotal?.toFixed(2) || '0.00'}</td>
                     <td style={{ ...tdStyle, fontWeight: 700 }}>£{q.total_amount?.toFixed(2) || '0.00'}</td>

@@ -15,7 +15,7 @@ export default async function AdminPurchaseOrdersPage() {
   const { data: pos } = await supabase
     .from('purchase_orders')
     .select(`
-      id, po_number, status, subtotal, vat_amount, total_amount, order_date, expected_date,
+      id, po_number, status, subtotal, vat_amount, total_amount, order_date, delivery_date,
       organizations!purchase_orders_supplier_org_id_fkey(name)
     `)
     .order('created_at', { ascending: false })
@@ -36,7 +36,7 @@ export default async function AdminPurchaseOrdersPage() {
                   <th style={thStyle}>PO #</th>
                   <th style={thStyle}>Supplier</th>
                   <th style={thStyle}>Date</th>
-                  <th style={thStyle}>Expected</th>
+                  <th style={thStyle}>Delivery</th>
                   <th style={thStyle}>Subtotal</th>
                   <th style={thStyle}>Total</th>
                   <th style={thStyle}>Status</th>
@@ -50,7 +50,7 @@ export default async function AdminPurchaseOrdersPage() {
                     </td>
                     <td style={tdStyle}>{po.organizations?.name || '—'}</td>
                     <td style={tdStyle}>{new Date(po.order_date).toLocaleDateString()}</td>
-                    <td style={tdStyle}>{po.expected_date ? new Date(po.expected_date).toLocaleDateString() : '—'}</td>
+                    <td style={tdStyle}>{po.delivery_date ? new Date(po.delivery_date).toLocaleDateString() : '—'}</td>
                     <td style={tdStyle}>£{po.subtotal.toFixed(2)}</td>
                     <td style={{ ...tdStyle, fontWeight: 700 }}>£{po.total_amount.toFixed(2)}</td>
                     <td style={tdStyle}><StatusBadge status={po.status} /></td>

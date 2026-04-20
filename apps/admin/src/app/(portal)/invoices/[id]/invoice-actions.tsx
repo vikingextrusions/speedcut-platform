@@ -22,7 +22,6 @@ export function InvoiceStatusActions({ invoiceId, currentStatus }: { invoiceId: 
     setLoading(true)
     const supabase = createClient()
     const update: any = { status: nextStatus }
-    if (nextStatus === 'paid') update.paid_date = new Date().toISOString().split('T')[0]
     const { error } = await supabase.from('invoices').update(update).eq('id', invoiceId)
     if (error) alert('Error: ' + error.message)
     else router.refresh()

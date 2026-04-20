@@ -16,10 +16,10 @@ export default async function AdminPODetailPage({
   const { data: po } = await supabase
     .from('purchase_orders')
     .select(`
-      id, po_number, status, subtotal, vat_amount, total_amount, po_date, expected_date,
-      supplier_name, supplier_ref, notes, created_at,
+      id, po_number, status, subtotal, vat_amount, total_amount, order_date, delivery_date,
+      notes, created_at,
       organizations!purchase_orders_supplier_org_id_fkey(id, name),
-      purchase_lines(id, description, quantity, unit_price, total_price, sort_order)
+      purchase_lines(id, description, part_number, quantity, unit_price, sort_order)
     `)
     .eq('id', id)
     .single()
@@ -32,7 +32,7 @@ export default async function AdminPODetailPage({
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
       <PageHeader
         title={po.po_number}
-        subtitle={`${po.supplier_name || (po.organizations as any)?.name || '—'} · Raised ${new Date(po.po_date).toLocaleDateString()}`}
+        subtitle={`${(po.organizations as any)?.name || '—'} · Raised ${new Date(po.order_date).toLocaleDateString()}`}
         backHref="/purchase-orders"
         backLabel="Back to Purchase Orders"
         badge={<StatusBadge status={po.status} />}
@@ -59,8 +59,8 @@ export default async function AdminPODetailPage({
             <div className="card">
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Details</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
-                <Row label="Supplier Ref" value={po.supplier_ref || '—'} />
-                <Row label="Expected" value={po.expected_date ? new Date(po.expected_date).toLocaleDateString() : '—'} />
+                <Row label="Supplier" value={(po.organizations as any)?.name || '—'} />
+                <Row label="Delivery Date" value={po.delivery_date ? new Date(po.delivery_date).toLocaleDateString() : '—'} />
                 <Row label="Created" value={new Date(po.created_at).toLocaleDateString()} />
               </div>
             </div>
@@ -76,7 +76,7 @@ export default async function AdminPODetailPage({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['#', 'Description', 'Qty', 'Unit Price', 'Total'].map(h => (
+                    {['#', 'Description', 'Part #', 'Qty', 'Unit Price', 'Total'].map(h => (
                       <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -86,9 +86,10 @@ export default async function AdminPODetailPage({
                     <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={tdStyle}>{idx + 1}</td>
                       <td style={{ ...tdStyle, whiteSpace: 'normal', maxWidth: '350px' }}>{line.description}</td>
+                      <td style={tdStyle}>{line.part_number || '—'}</td>
                       <td style={tdStyle}>{line.quantity}</td>
                       <td style={tdStyle}>£{Number(line.unit_price).toFixed(2)}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600 }}>£{Number(line.total_price || line.quantity * line.unit_price).toFixed(2)}</td>
+                      <td style={{ ...tdStyle, fontWeight: 600 }}>£{(line.quantity * line.unit_price).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

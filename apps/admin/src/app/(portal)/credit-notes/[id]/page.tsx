@@ -16,10 +16,10 @@ export default async function AdminCreditNoteDetailPage({
   const { data: cn } = await supabase
     .from('credit_notes')
     .select(`
-      id, cn_number, status, subtotal, vat_amount, total_amount, cn_date, reason, notes, created_at,
+      id, credit_note_number, status, subtotal, vat_amount, total_amount, date, notes, created_at,
       organizations!credit_notes_customer_org_id_fkey(id, name),
       invoices(id, invoice_number),
-      credit_note_lines(id, description, quantity, unit_price, total_price, sort_order)
+      credit_note_lines(id, description, quantity, unit_price, sort_order)
     `)
     .eq('id', id)
     .single()
@@ -31,8 +31,8 @@ export default async function AdminCreditNoteDetailPage({
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
       <PageHeader
-        title={cn.cn_number}
-        subtitle={`${(cn.organizations as any)?.name || '—'} · Issued ${new Date(cn.cn_date).toLocaleDateString()}`}
+        title={cn.credit_note_number}
+        subtitle={`${(cn.organizations as any)?.name || '—'} · Issued ${new Date(cn.date).toLocaleDateString()}`}
         backHref="/credit-notes"
         backLabel="Back to Credit Notes"
         badge={<StatusBadge status={cn.status} />}
@@ -68,13 +68,6 @@ export default async function AdminCreditNoteDetailPage({
                 <Row label="Created" value={new Date(cn.created_at).toLocaleDateString()} />
               </div>
             </div>
-
-            {cn.reason && (
-              <div className="card">
-                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Reason</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>{cn.reason}</p>
-              </div>
-            )}
           </>
         }
       >
@@ -99,7 +92,7 @@ export default async function AdminCreditNoteDetailPage({
                       <td style={{ ...tdStyle, whiteSpace: 'normal', maxWidth: '350px' }}>{line.description}</td>
                       <td style={tdStyle}>{line.quantity}</td>
                       <td style={tdStyle}>£{Number(line.unit_price).toFixed(2)}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600, color: '#ef4444' }}>-£{Number(line.total_price || line.quantity * line.unit_price).toFixed(2)}</td>
+                      <td style={{ ...tdStyle, fontWeight: 600, color: '#ef4444' }}>-£{(line.quantity * line.unit_price).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -11,6 +11,7 @@ import {
   Receipt,
   FolderOpen,
   Settings,
+  Bell,
 } from 'lucide-react'
 
 const navSections = [
@@ -18,6 +19,7 @@ const navSections = [
     label: 'Overview',
     items: [
       { title: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { title: 'Notifications', href: '/notifications', icon: <Bell size={20} /> },
     ],
   },
   {

@@ -12,9 +12,7 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), [])
 
   if (!mounted) {
-    return (
-      <div className="w-16 h-8 bg-[var(--bg-surface)] rounded-full border border-[var(--border)]" />
-    )
+    return <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'var(--bg-elevated)' }} />
   }
 
   const isDark = resolvedTheme === 'dark'
@@ -22,35 +20,64 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className={`
-        relative w-16 h-8 rounded-full transition-all duration-300 flex items-center p-1
-        ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-amber-100 border-amber-200'}
-        border shadow-inner focus:outline-none focus:ring-2 focus:ring-[var(--accent)]
-      `}
-      aria-label="Toggle theme"
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        backgroundColor: 'var(--bg-elevated)',
+        color: 'var(--text-muted)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        flexShrink: 0,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--accent)'
+        e.currentTarget.style.color = 'var(--accent)'
+        e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent) 8%, var(--bg-elevated))'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border)'
+        e.currentTarget.style.color = 'var(--text-muted)'
+        e.currentTarget.style.backgroundColor = 'var(--bg-elevated)'
+      }}
     >
-      <div
-        className={`
-          absolute w-6 h-6 rounded-full transition-all duration-500 transform flex items-center justify-center
-          ${isDark ? 'translate-x-8 bg-slate-900' : 'translate-x-0 bg-white shadow-md'}
-        `}
+      {/* Sun icon — visible in dark mode (to switch to light) */}
+      <span
+        style={{
+          position: 'absolute',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'opacity 0.25s ease, transform 0.35s ease',
+          opacity: isDark ? 1 : 0,
+          transform: isDark ? 'rotate(0deg) scale(1)' : 'rotate(-90deg) scale(0.5)',
+        }}
       >
-        {isDark ? (
-          <Moon size={14} className="text-blue-300" />
-        ) : (
-          <Sun size={14} className="text-amber-500" />
-        )}
-      </div>
-      <div className="flex-1 flex justify-between px-1.5 pointer-events-none">
-        <Sun
-          size={12}
-          className={isDark ? 'text-slate-500 opacity-20' : 'text-amber-500 opacity-100'}
-        />
-        <Moon
-          size={12}
-          className={isDark ? 'text-blue-300 opacity-100' : 'text-slate-400 opacity-20'}
-        />
-      </div>
+        <Sun size={16} />
+      </span>
+
+      {/* Moon icon — visible in light mode (to switch to dark) */}
+      <span
+        style={{
+          position: 'absolute',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'opacity 0.25s ease, transform 0.35s ease',
+          opacity: isDark ? 0 : 1,
+          transform: isDark ? 'rotate(90deg) scale(0.5)' : 'rotate(0deg) scale(1)',
+        }}
+      >
+        <Moon size={16} />
+      </span>
     </button>
   )
 }

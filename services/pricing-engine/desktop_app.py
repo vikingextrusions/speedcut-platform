@@ -6,7 +6,7 @@ analysis and pricing logic before integration into the
 Next.js platform.
 
 Run with:  python desktop_app.py
-Requires:  cadquery, OCP (pip install cadquery)
+Requires:  cadquery, OCP, matplotlib (pip install cadquery matplotlib)
 """
 
 import os
@@ -17,6 +17,13 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from dataclasses import dataclass
 from typing import Optional
+
+import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Add parent to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -102,7 +109,7 @@ class MetricCard(tk.Frame):
                          highlightbackground=COLORS["border"],
                          **kwargs)
 
-        self.configure(padx=12, pady=10)
+        self.configure(padx=12, pady=8)
 
         label_color = COLORS["accent"] if accent else COLORS["text_muted"]
         value_color = COLORS["accent"] if accent else COLORS["text_primary"]
@@ -145,7 +152,7 @@ class SectionHeader(tk.Frame):
         super().__init__(parent, bg=COLORS["bg_primary"], **kwargs)
 
         header = tk.Frame(self, bg=COLORS["bg_primary"])
-        header.pack(fill="x", pady=(16, 8))
+        header.pack(fill="x", pady=(12, 6))
 
         tk.Label(
             header, text=icon, font=FONT_SMALL,
@@ -204,8 +211,8 @@ class SpeedcutDesktopApp:
         self.root = tk.Tk()
         self.root.title("Speedcut — Geometry Analysis & Pricing")
         self.root.configure(bg=COLORS["bg_primary"])
-        self.root.geometry("1100x820")
-        self.root.minsize(900, 700)
+        self.root.geometry("1280x900")
+        self.root.minsize(1100, 750)
 
         # State
         self.current_analysis: Optional[GeometryAnalysis] = None
@@ -233,14 +240,9 @@ class SpeedcutDesktopApp:
                    fieldbackground=[("readonly", COLORS["bg_input"])],
                    foreground=[("readonly", COLORS["text_primary"])])
 
-        style.configure("Accent.TProgressbar",
-                         troughcolor=COLORS["bg_elevated"],
-                         background=COLORS["accent"],
-                         thickness=6)
-
     def _build_ui(self):
         # ── Title Bar ──
-        title_bar = tk.Frame(self.root, bg=COLORS["bg_surface"], height=56)
+        title_bar = tk.Frame(self.root, bg=COLORS["bg_surface"], height=50)
         title_bar.pack(fill="x")
         title_bar.pack_propagate(False)
 
@@ -264,47 +266,48 @@ class SpeedcutDesktopApp:
 
         # Version badge
         badge = tk.Label(
-            title_inner, text=" v0.1.0 ", font=FONT_TINY,
+            title_inner, text=" v0.2.0 ", font=FONT_TINY,
             fg=COLORS["accent"], bg=COLORS["accent_dim"],
             padx=6, pady=1
         )
         badge.pack(side="right")
 
-        # ── Main Content (two-column) ──
+        # ── File Input Bar ──
+        self._build_file_input()
+
+        # ── Main Content (three-column) ──
         main = tk.Frame(self.root, bg=COLORS["bg_primary"])
-        main.pack(fill="both", expand=True, padx=16, pady=(12, 16))
+        main.pack(fill="both", expand=True, padx=12, pady=(4, 12))
 
-        # Left column: File input & analysis results
-        left_col = tk.Frame(main, bg=COLORS["bg_primary"])
-        left_col.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        # Left column: 3D Viewer
+        left_col = tk.Frame(main, bg=COLORS["bg_primary"], width=480)
+        left_col.pack(side="left", fill="both", expand=True, padx=(0, 6))
 
-        # Right column: Pricing & breakdown
-        right_col = tk.Frame(main, bg=COLORS["bg_primary"])
-        right_col.pack(side="right", fill="both", expand=True, padx=(8, 0))
+        # Middle column: Analysis results
+        mid_col = tk.Frame(main, bg=COLORS["bg_primary"], width=340)
+        mid_col.pack(side="left", fill="both", padx=(0, 6))
 
-        self._build_file_input(left_col)
-        self._build_analysis_results(left_col)
+        # Right column: Pricing
+        right_col = tk.Frame(main, bg=COLORS["bg_primary"], width=300)
+        right_col.pack(side="right", fill="both")
+
+        self._build_3d_viewer(left_col)
+        self._build_analysis_results(mid_col)
         self._build_pricing_panel(right_col)
 
-    def _build_file_input(self, parent):
-        """Build the file selection / drop zone area."""
-        SectionHeader(parent, "Step File Input", icon="📂").pack(fill="x")
+    def _build_file_input(self):
+        """Build the file selection bar."""
+        file_frame = tk.Frame(self.root, bg=COLORS["bg_surface"],
+                              highlightthickness=0)
+        file_frame.pack(fill="x", padx=12, pady=(8, 0))
 
-        file_frame = tk.Frame(parent, bg=COLORS["bg_surface"],
-                              highlightthickness=1,
-                              highlightbackground=COLORS["border"])
-        file_frame.pack(fill="x", pady=(0, 4))
-
-        inner = tk.Frame(file_frame, bg=COLORS["bg_surface"], padx=16, pady=14)
+        inner = tk.Frame(file_frame, bg=COLORS["bg_surface"], padx=14, pady=10)
         inner.pack(fill="x")
 
         # File path entry
-        path_frame = tk.Frame(inner, bg=COLORS["bg_surface"])
-        path_frame.pack(fill="x")
-
         self.file_path_var = tk.StringVar()
         self.file_entry = tk.Entry(
-            path_frame, textvariable=self.file_path_var,
+            inner, textvariable=self.file_path_var,
             font=FONT_MONO_SMALL, bg=COLORS["bg_input"],
             fg=COLORS["text_secondary"], insertbackground=COLORS["accent"],
             relief="flat", highlightthickness=1,
@@ -314,86 +317,251 @@ class SpeedcutDesktopApp:
         self.file_entry.pack(side="left", fill="x", expand=True, ipady=6)
 
         browse_btn = tk.Button(
-            path_frame, text="Browse", font=FONT_BOLD,
+            inner, text="Browse", font=FONT_BOLD,
             bg=COLORS["bg_elevated"], fg=COLORS["text_primary"],
             activebackground=COLORS["accent_dim"],
             activeforeground=COLORS["text_primary"],
             relief="flat", padx=16, pady=4, cursor="hand2",
             command=self._browse_file
         )
-        browse_btn.pack(side="right", padx=(8, 0))
-
-        # Analyse button
-        btn_frame = tk.Frame(inner, bg=COLORS["bg_surface"])
-        btn_frame.pack(fill="x", pady=(10, 0))
+        browse_btn.pack(side="left", padx=(8, 0))
 
         self.analyse_btn = tk.Button(
-            btn_frame, text="⚡  Analyse STEP File", font=FONT_BOLD,
+            inner, text="⚡ Analyse", font=FONT_BOLD,
             bg=COLORS["accent"], fg=COLORS["bg_primary"],
             activebackground=COLORS["accent_hover"],
             activeforeground=COLORS["bg_primary"],
-            relief="flat", padx=20, pady=8, cursor="hand2",
+            relief="flat", padx=20, pady=4, cursor="hand2",
             command=self._run_analysis
         )
-        self.analyse_btn.pack(side="left")
+        self.analyse_btn.pack(side="left", padx=(8, 0))
 
         self.status_label = tk.Label(
-            btn_frame, text="No file loaded", font=FONT_SMALL,
+            inner, text="No file loaded", font=FONT_SMALL,
             fg=COLORS["text_muted"], bg=COLORS["bg_surface"]
         )
         self.status_label.pack(side="left", padx=(12, 0))
 
+    def _build_3d_viewer(self, parent):
+        """Build the 3D model viewer using matplotlib."""
+        SectionHeader(parent, "3D Preview", icon="🔮").pack(fill="x")
+
+        viewer_frame = tk.Frame(parent, bg=COLORS["bg_surface"],
+                                highlightthickness=1,
+                                highlightbackground=COLORS["border"])
+        viewer_frame.pack(fill="both", expand=True)
+
+        # Create matplotlib figure with dark background
+        self.fig = plt.Figure(figsize=(5, 4), dpi=100,
+                              facecolor=COLORS["bg_surface"])
+        self.ax = self.fig.add_subplot(111, projection='3d',
+                                        facecolor=COLORS["bg_primary"])
+
+        # Style the 3D axes
+        self._style_3d_axes()
+        self._show_placeholder()
+
+        # Embed in tkinter
+        self.canvas_3d = FigureCanvasTkAgg(self.fig, master=viewer_frame)
+        self.canvas_3d.draw()
+        self.canvas_3d.get_tk_widget().pack(fill="both", expand=True, padx=2, pady=2)
+
+        # Viewer controls
+        ctrl_frame = tk.Frame(parent, bg=COLORS["bg_primary"])
+        ctrl_frame.pack(fill="x", pady=(4, 0))
+
+        self.tri_count_label = tk.Label(
+            ctrl_frame, text="No mesh loaded", font=FONT_TINY,
+            fg=COLORS["text_muted"], bg=COLORS["bg_primary"]
+        )
+        self.tri_count_label.pack(side="left")
+
+        # View preset buttons
+        for label, elev, azim in [("Front", 0, 0), ("Top", 90, 0),
+                                   ("ISO", 30, -45), ("Right", 0, 90)]:
+            btn = tk.Button(
+                ctrl_frame, text=label, font=FONT_TINY,
+                bg=COLORS["bg_elevated"], fg=COLORS["text_secondary"],
+                activebackground=COLORS["accent_dim"],
+                relief="flat", padx=8, pady=2, cursor="hand2",
+                command=lambda e=elev, a=azim: self._set_view(e, a)
+            )
+            btn.pack(side="right", padx=2)
+
+    def _style_3d_axes(self):
+        """Apply dark theme to 3D axes."""
+        ax = self.ax
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax.set_zlabel('')
+
+        # Muted grid
+        ax.xaxis.pane.fill = False
+        ax.yaxis.pane.fill = False
+        ax.zaxis.pane.fill = False
+
+        pane_color = COLORS["bg_elevated"] + "33"
+        ax.xaxis.pane.set_edgecolor(COLORS["border"])
+        ax.yaxis.pane.set_edgecolor(COLORS["border"])
+        ax.zaxis.pane.set_edgecolor(COLORS["border"])
+
+        ax.tick_params(colors=COLORS["text_muted"], labelsize=7)
+        ax.xaxis.label.set_color(COLORS["text_muted"])
+        ax.yaxis.label.set_color(COLORS["text_muted"])
+        ax.zaxis.label.set_color(COLORS["text_muted"])
+
+        for axis in [ax.xaxis, ax.yaxis, ax.zaxis]:
+            axis._axinfo['grid']['color'] = COLORS["border"]
+            axis._axinfo['grid']['linewidth'] = 0.3
+
+    def _show_placeholder(self):
+        """Show placeholder text in the 3D viewer."""
+        self.ax.clear()
+        self._style_3d_axes()
+        self.ax.text2D(0.5, 0.5, "Load a STEP file\nto see 3D preview",
+                       transform=self.ax.transAxes,
+                       fontsize=12, color=COLORS["text_muted"],
+                       ha='center', va='center',
+                       fontfamily=FONT_FAMILY)
+        self.ax.set_axis_off()
+
+    def _set_view(self, elev, azim):
+        """Set camera view angle."""
+        self.ax.view_init(elev=elev, azim=azim)
+        self.canvas_3d.draw_idle()
+
+    def _render_mesh(self, analysis: GeometryAnalysis):
+        """Render the 3D mesh in the matplotlib viewer."""
+        mesh = analysis.mesh
+        if not mesh.vertices or not mesh.triangles:
+            self._show_placeholder()
+            self.tri_count_label.configure(text="No mesh data")
+            return
+
+        self.ax.clear()
+        self._style_3d_axes()
+
+        verts = np.array(mesh.vertices)
+        tris = np.array(mesh.triangles)
+
+        # Build polygon list for Poly3DCollection
+        polygons = verts[tris]
+
+        # Create collection with semi-transparent faces
+        collection = Poly3DCollection(
+            polygons,
+            alpha=0.85,
+            facecolor='#1a8a8e',
+            edgecolor='#00d9e133',
+            linewidth=0.15,
+        )
+        self.ax.add_collection3d(collection)
+
+        # Set axis limits from bounding box
+        x_min, y_min, z_min = verts.min(axis=0)
+        x_max, y_max, z_max = verts.max(axis=0)
+
+        # Center the model
+        cx = (x_min + x_max) / 2
+        cy = (y_min + y_max) / 2
+        cz = (z_min + z_max) / 2
+        max_range = max(x_max - x_min, y_max - y_min, z_max - z_min) / 2 * 1.1
+
+        self.ax.set_xlim(cx - max_range, cx + max_range)
+        self.ax.set_ylim(cy - max_range, cy + max_range)
+        self.ax.set_zlim(cz - max_range, cz + max_range)
+
+        # Equal aspect ratio
+        self.ax.set_box_aspect([1, 1, 1])
+
+        # ISO view
+        self.ax.view_init(elev=25, azim=-45)
+
+        self.canvas_3d.draw_idle()
+        self.tri_count_label.configure(
+            text=f"{len(mesh.vertices):,} vertices · {len(mesh.triangles):,} triangles",
+            fg=COLORS["text_secondary"]
+        )
+
     def _build_analysis_results(self, parent):
-        """Build the geometry analysis results panel."""
+        """Build the geometry analysis results panel (scrollable)."""
         SectionHeader(parent, "Geometry Analysis", icon="📐").pack(fill="x")
 
-        # Metrics grid (2×3)
-        self.metrics_frame = tk.Frame(parent, bg=COLORS["bg_primary"])
-        self.metrics_frame.pack(fill="x", pady=(0, 4))
+        # Scrollable frame
+        canvas = tk.Canvas(parent, bg=COLORS["bg_primary"],
+                           highlightthickness=0, width=320)
+        scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg=COLORS["bg_primary"])
 
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Bind mousewheel
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # Metrics grid (2×3)
         # Row 1
-        row1 = tk.Frame(self.metrics_frame, bg=COLORS["bg_primary"])
-        row1.pack(fill="x", pady=(0, 4))
+        row1 = tk.Frame(scroll_frame, bg=COLORS["bg_primary"])
+        row1.pack(fill="x", pady=(0, 3))
 
         self.card_volume = MetricCard(row1, "Volume", unit="mm³")
-        self.card_volume.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.card_volume.pack(side="left", fill="x", expand=True, padx=(0, 3))
 
         self.card_surface = MetricCard(row1, "Surface Area", unit="mm²")
-        self.card_surface.pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-        self.card_bbox = MetricCard(row1, "Bounding Box")
-        self.card_bbox.pack(side="left", fill="x", expand=True)
+        self.card_surface.pack(side="left", fill="x", expand=True)
 
         # Row 2
-        row2 = tk.Frame(self.metrics_frame, bg=COLORS["bg_primary"])
-        row2.pack(fill="x", pady=(0, 4))
+        row2 = tk.Frame(scroll_frame, bg=COLORS["bg_primary"])
+        row2.pack(fill="x", pady=(0, 3))
 
-        self.card_removal = MetricCard(row2, "Material Removal", accent=True)
-        self.card_removal.pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-        self.card_complexity = MetricCard(row2, "Complexity Score", accent=True)
-        self.card_complexity.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.card_bbox = MetricCard(row2, "Bounding Box")
+        self.card_bbox.pack(side="left", fill="x", expand=True, padx=(0, 3))
 
         self.card_watertight = MetricCard(row2, "Watertight")
         self.card_watertight.pack(side="left", fill="x", expand=True)
 
-        # Topology breakdown
-        SectionHeader(parent, "Topology Breakdown", icon="🔷").pack(fill="x")
+        # Row 3
+        row3 = tk.Frame(scroll_frame, bg=COLORS["bg_primary"])
+        row3.pack(fill="x", pady=(0, 3))
 
-        topo_frame = tk.Frame(parent, bg=COLORS["bg_surface"],
+        self.card_removal = MetricCard(row3, "Material Removal", accent=True)
+        self.card_removal.pack(side="left", fill="x", expand=True, padx=(0, 3))
+
+        self.card_complexity = MetricCard(row3, "Complexity", accent=True)
+        self.card_complexity.pack(side="left", fill="x", expand=True)
+
+        # Topology breakdown
+        topo_header = tk.Label(
+            scroll_frame, text="  ◆  TOPOLOGY BREAKDOWN",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg=COLORS["text_secondary"], bg=COLORS["bg_primary"],
+            anchor="w"
+        )
+        topo_header.pack(fill="x", pady=(10, 4))
+
+        topo_frame = tk.Frame(scroll_frame, bg=COLORS["bg_surface"],
                               highlightthickness=1,
                               highlightbackground=COLORS["border"])
         topo_frame.pack(fill="x")
 
-        topo_inner = tk.Frame(topo_frame, bg=COLORS["bg_surface"], padx=14, pady=10)
+        topo_inner = tk.Frame(topo_frame, bg=COLORS["bg_surface"], padx=12, pady=8)
         topo_inner.pack(fill="x")
 
         # Face breakdown
-        face_header = tk.Label(
+        tk.Label(
             topo_inner, text="FACES", font=FONT_TINY,
             fg=COLORS["accent"], bg=COLORS["bg_surface"], anchor="w"
-        )
-        face_header.pack(fill="x")
+        ).pack(fill="x")
 
         self.face_rows = {}
         for face_type in ["Planar", "Cylindrical", "Conical", "Spherical",
@@ -402,15 +570,13 @@ class SpeedcutDesktopApp:
             row.pack(fill="x", pady=1)
             self.face_rows[face_type.lower()] = row
 
-        # Separator
-        tk.Frame(topo_inner, bg=COLORS["border"], height=1).pack(fill="x", pady=6)
+        tk.Frame(topo_inner, bg=COLORS["border"], height=1).pack(fill="x", pady=4)
 
         # Edge breakdown
-        edge_header = tk.Label(
+        tk.Label(
             topo_inner, text="EDGES", font=FONT_TINY,
             fg=COLORS["accent"], bg=COLORS["bg_surface"], anchor="w"
-        )
-        edge_header.pack(fill="x")
+        ).pack(fill="x")
 
         self.edge_rows = {}
         for edge_type in ["Lines", "Arcs", "BSplines", "Other"]:
@@ -418,10 +584,9 @@ class SpeedcutDesktopApp:
             row.pack(fill="x", pady=1)
             self.edge_rows[edge_type.lower()] = row
 
-        # Separator
-        tk.Frame(topo_inner, bg=COLORS["border"], height=1).pack(fill="x", pady=6)
+        tk.Frame(topo_inner, bg=COLORS["border"], height=1).pack(fill="x", pady=4)
 
-        # Summary row
+        # Summary rows
         self.row_total_faces = BreakdownRow(topo_inner, "Total Faces", "—", bold=True)
         self.row_total_faces.pack(fill="x", pady=1)
 
@@ -431,28 +596,45 @@ class SpeedcutDesktopApp:
         self.row_solids = BreakdownRow(topo_inner, "Solids", "—", bold=True)
         self.row_solids.pack(fill="x", pady=1)
 
-        self.row_perimeter = BreakdownRow(topo_inner, "Est. Total Edge Length", "—", bold=True, accent=True)
+        self.row_perimeter = BreakdownRow(topo_inner, "Est. Edge Length", "—",
+                                           bold=True, accent=True)
         self.row_perimeter.pack(fill="x", pady=1)
 
     def _build_pricing_panel(self, parent):
-        """Build the CNC pricing estimation panel."""
+        """Build the CNC pricing estimation panel (scrollable)."""
         SectionHeader(parent, "CNC Cost Estimate", icon="💰").pack(fill="x")
 
-        pricing_frame = tk.Frame(parent, bg=COLORS["bg_surface"],
+        # Scrollable frame
+        canvas = tk.Canvas(parent, bg=COLORS["bg_primary"],
+                           highlightthickness=0, width=280)
+        scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg=COLORS["bg_primary"])
+
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        pricing_frame = tk.Frame(scroll_frame, bg=COLORS["bg_surface"],
                                  highlightthickness=1,
                                  highlightbackground=COLORS["border"])
         pricing_frame.pack(fill="x")
 
         pricing_inner = tk.Frame(pricing_frame, bg=COLORS["bg_surface"],
-                                  padx=14, pady=12)
+                                  padx=12, pady=10)
         pricing_inner.pack(fill="x")
 
         # Material selector
-        mat_label = tk.Label(
+        tk.Label(
             pricing_inner, text="MATERIAL", font=FONT_TINY,
             fg=COLORS["text_muted"], bg=COLORS["bg_surface"], anchor="w"
-        )
-        mat_label.pack(fill="x")
+        ).pack(fill="x")
 
         self.material_var = tk.StringVar(value="Aluminium 6082-T6")
         material_combo = ttk.Combobox(
@@ -465,11 +647,10 @@ class SpeedcutDesktopApp:
         material_combo.bind("<<ComboboxSelected>>", lambda e: self._update_pricing())
 
         # Quantity
-        qty_label = tk.Label(
+        tk.Label(
             pricing_inner, text="QUANTITY", font=FONT_TINY,
             fg=COLORS["text_muted"], bg=COLORS["bg_surface"], anchor="w"
-        )
-        qty_label.pack(fill="x")
+        ).pack(fill="x")
 
         self.qty_var = tk.StringVar(value="1")
         qty_entry = tk.Entry(
@@ -488,20 +669,18 @@ class SpeedcutDesktopApp:
             pricing_inner, text="🔄  Recalculate", font=FONT_BOLD,
             bg=COLORS["bg_elevated"], fg=COLORS["text_primary"],
             activebackground=COLORS["accent_dim"],
-            relief="flat", padx=16, pady=6, cursor="hand2",
+            relief="flat", padx=16, pady=5, cursor="hand2",
             command=self._update_pricing
         )
-        recalc_btn.pack(fill="x", pady=(0, 8))
+        recalc_btn.pack(fill="x", pady=(0, 6))
 
-        # Separator
-        tk.Frame(pricing_inner, bg=COLORS["border"], height=1).pack(fill="x", pady=6)
+        tk.Frame(pricing_inner, bg=COLORS["border"], height=1).pack(fill="x", pady=4)
 
         # Cost breakdown
-        cost_header = tk.Label(
+        tk.Label(
             pricing_inner, text="COST BREAKDOWN", font=FONT_TINY,
             fg=COLORS["accent"], bg=COLORS["bg_surface"], anchor="w"
-        )
-        cost_header.pack(fill="x", pady=(0, 6))
+        ).pack(fill="x", pady=(0, 4))
 
         self.cost_rows = {}
         for cost_key, label in [
@@ -517,7 +696,7 @@ class SpeedcutDesktopApp:
             self.cost_rows[cost_key] = row
 
         # Total divider
-        tk.Frame(pricing_inner, bg=COLORS["accent_dim"], height=2).pack(fill="x", pady=(8, 4))
+        tk.Frame(pricing_inner, bg=COLORS["accent_dim"], height=2).pack(fill="x", pady=(6, 3))
 
         self.row_unit_total = BreakdownRow(
             pricing_inner, "Unit Price", "—", bold=True, accent=True
@@ -529,16 +708,20 @@ class SpeedcutDesktopApp:
         )
         self.row_batch_total.pack(fill="x", pady=2)
 
-        # ─── Editable Rates Section ───
-        SectionHeader(parent, "Rate Settings", icon="⚙").pack(fill="x")
+        # ─── Editable Rates ───
+        rates_header = tk.Label(
+            scroll_frame, text="  ⚙  RATE SETTINGS",
+            font=(FONT_FAMILY, 9, "bold"),
+            fg=COLORS["text_secondary"], bg=COLORS["bg_primary"], anchor="w"
+        )
+        rates_header.pack(fill="x", pady=(10, 4))
 
-        rates_frame = tk.Frame(parent, bg=COLORS["bg_surface"],
+        rates_frame = tk.Frame(scroll_frame, bg=COLORS["bg_surface"],
                                highlightthickness=1,
                                highlightbackground=COLORS["border"])
         rates_frame.pack(fill="x")
 
-        rates_inner = tk.Frame(rates_frame, bg=COLORS["bg_surface"],
-                                padx=14, pady=10)
+        rates_inner = tk.Frame(rates_frame, bg=COLORS["bg_surface"], padx=12, pady=8)
         rates_inner.pack(fill="x")
 
         self.rate_vars = {}
@@ -572,20 +755,15 @@ class SpeedcutDesktopApp:
             entry.bind("<KeyRelease>", lambda e: self._update_pricing())
             self.rate_vars[key] = var
 
-        # ─── Export ───
-        SectionHeader(parent, "Export", icon="📋").pack(fill="x")
-
-        export_frame = tk.Frame(parent, bg=COLORS["bg_primary"])
-        export_frame.pack(fill="x")
-
-        copy_btn = tk.Button(
-            export_frame, text="📋  Copy Report to Clipboard", font=FONT_BOLD,
+        # Export button
+        export_btn = tk.Button(
+            scroll_frame, text="📋  Copy Report to Clipboard", font=FONT_BOLD,
             bg=COLORS["bg_elevated"], fg=COLORS["text_primary"],
             activebackground=COLORS["accent_dim"],
             relief="flat", padx=16, pady=8, cursor="hand2",
             command=self._copy_report
         )
-        copy_btn.pack(fill="x")
+        export_btn.pack(fill="x", pady=(10, 0))
 
     # ─── Actions ───
 
@@ -617,7 +795,7 @@ class SpeedcutDesktopApp:
             return
 
         # Disable button and show status
-        self.analyse_btn.configure(state="disabled", text="⏳  Analysing...")
+        self.analyse_btn.configure(state="disabled", text="⏳ Analysing...")
         self.status_label.configure(text="Processing...", fg=COLORS["warning"])
         self.root.update_idletasks()
 
@@ -634,7 +812,7 @@ class SpeedcutDesktopApp:
         self.current_analysis = analysis
 
         # Re-enable button
-        self.analyse_btn.configure(state="normal", text="⚡  Analyse STEP File")
+        self.analyse_btn.configure(state="normal", text="⚡ Analyse")
 
         if analysis.error:
             self.status_label.configure(
@@ -699,6 +877,9 @@ class SpeedcutDesktopApp:
         self.row_total_edges.set_value(str(eb.total))
         self.row_solids.set_value(str(analysis.solid_count))
         self.row_perimeter.set_value(f"{analysis.estimated_perimeter_mm:,.1f} mm")
+
+        # Render 3D preview
+        self._render_mesh(analysis)
 
         # Auto-update pricing
         self._update_pricing()
@@ -791,9 +972,10 @@ class SpeedcutDesktopApp:
             f"BSplines: {eb.bsplines}, Other: {eb.other})",
             f"  Solids: {analysis.solid_count}",
             f"  Est. Total Edge Length: {analysis.estimated_perimeter_mm:,.1f} mm",
+            f"  Mesh: {analysis.mesh.triangle_count:,} triangles",
         ]
 
-        # Add pricing if available
+        # Add pricing
         material = self.material_var.get()
         try:
             qty = max(1, int(self.qty_var.get()))

@@ -2,17 +2,20 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Send, Plus, Cpu, Printer, Layers, Package } from 'lucide-react'
+import { ArrowLeft, Send, Plus, Cpu, Printer, Layers, Package, Loader2 } from 'lucide-react'
 import {
   QuoteLineItem,
   createEmptyPart,
   serviceConfig,
 } from '@speedcut/ui/quote-line-item'
 import type { QuotePartData, ServiceType } from '@speedcut/ui/quote-line-item'
+import { submitQuoteRequest } from './actions'
 
 export default function NewQuotePage() {
   const [parts, setParts] = useState<QuotePartData[]>([])
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const addPart = (service: ServiceType) => {
     setParts([...parts, createEmptyPart(service)])
@@ -34,6 +37,19 @@ export default function NewQuotePage() {
   }, {})
 
   const hasParts = parts.length > 0
+
+  const handleSubmit = async (formData: FormData) => {
+    setError(null)
+    setSubmitting(true)
+    // Serialize parts data into the form
+    formData.set('parts_data', JSON.stringify(parts))
+    try {
+      await submitQuoteRequest(formData)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to submit quote')
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
@@ -92,7 +108,22 @@ export default function NewQuotePage() {
         )}
       </div>
 
-      <form style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px' }}>
+      {/* Error display */}
+      {error && (
+        <div style={{
+          padding: '0.75rem 1rem',
+          marginBottom: '1rem',
+          borderRadius: '0.5rem',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          color: '#ef4444',
+          fontSize: '0.875rem',
+        }}>
+          {error}
+        </div>
+      )}
+
+      <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px' }}>
         {/* Project Details */}
         <div className="card">
           <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Project Details</h2>
@@ -334,11 +365,18 @@ export default function NewQuotePage() {
               </Link>
               <button
                 type="submit"
+                disabled={submitting}
                 className="btn-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.5rem' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 1.5rem',
+                  opacity: submitting ? 0.7 : 1,
+                }}
               >
-                <Send size={16} />
-                Submit Quote Request
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                {submitting ? 'Submitting...' : 'Submit Quote Request'}
               </button>
             </div>
           </div>

@@ -20,7 +20,7 @@ from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 from OCP.TopAbs import TopAbs_FACE, TopAbs_SOLID, TopAbs_EDGE, TopAbs_WIRE
 from OCP.TopExp import TopExp_Explorer
-from OCP.TopoDS import topods
+from OCP.TopoDS import TopoDS
 from OCP.BRepCheck import BRepCheck_Analyzer
 from OCP.BRepAdaptor import BRepAdaptor_Surface, BRepAdaptor_Curve
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
@@ -159,7 +159,7 @@ def _analyse_faces(shape) -> FaceBreakdown:
     explorer = TopExp_Explorer(shape, TopAbs_FACE)
     while explorer.More():
         try:
-            face = topods.Face(explorer.Current())  # Downcast to TopoDS_Face
+            face = TopoDS.Face_s(explorer.Current())  # Downcast to TopoDS_Face
             adaptor = BRepAdaptor_Surface(face)
             stype = adaptor.GetType()
             if stype == GeomAbs_Plane:
@@ -188,7 +188,7 @@ def _analyse_edges(shape) -> EdgeBreakdown:
     explorer = TopExp_Explorer(shape, TopAbs_EDGE)
     while explorer.More():
         try:
-            edge = topods.Edge(explorer.Current())  # Downcast to TopoDS_Edge
+            edge = TopoDS.Edge_s(explorer.Current())  # Downcast to TopoDS_Edge
             adaptor = BRepAdaptor_Curve(edge)
             ctype = adaptor.GetType()
             if ctype == GeomAbs_Line:
@@ -211,7 +211,7 @@ def _estimate_total_edge_length(shape) -> float:
     explorer = TopExp_Explorer(shape, TopAbs_EDGE)
     while explorer.More():
         try:
-            edge = topods.Edge(explorer.Current())
+            edge = TopoDS.Edge_s(explorer.Current())
             props = GProp_GProps()
             BRepGProp.LinearProperties_s(edge, props)
             total_length += props.Mass()
@@ -244,7 +244,7 @@ def _extract_mesh(shape, deflection: float = 0.1) -> MeshData:
     explorer = TopExp_Explorer(shape, TopAbs_FACE)
     while explorer.More():
         try:
-            face = topods.Face(explorer.Current())
+            face = TopoDS.Face_s(explorer.Current())
             loc = TopLoc_Location()
             tri = BRep_Tool.Triangulation_s(face, loc)
             

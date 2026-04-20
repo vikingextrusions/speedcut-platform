@@ -11,7 +11,8 @@
     "./input": "./src/input.tsx",
     "./card": "./src/card.tsx",
     "./badge": "./src/badge.tsx",
-    "./service-tabs": "./src/service-tabs.tsx"
+    "./service-tabs": "./src/service-tabs.tsx",
+    "./quote-line-item": "./src/quote-line-item.tsx"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

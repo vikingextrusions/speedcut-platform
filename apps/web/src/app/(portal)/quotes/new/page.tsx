@@ -1,123 +1,133 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Cpu, Printer, Layers } from 'lucide-react'
+import { ServiceCard } from '@speedcut/ui/service-tabs'
+
+const services = [
+  {
+    id: 'cnc',
+    title: 'CNC Machining',
+    description: 'Precision CNC milling and turning for metals, plastics, and composites. Tight tolerances and production-ready finishes.',
+    icon: <Cpu size={26} />,
+    accentColor: '#00d9e1',
+    features: [
+      'Milling, turning & multi-axis machining',
+      'Metals: aluminium, steel, titanium, brass',
+      'Tolerances down to ±0.01mm',
+      'Surface finishes: anodising, plating, powder coat',
+    ],
+    href: '/quotes/new/cnc',
+  },
+  {
+    id: '3d-printing',
+    title: '3D Printing',
+    description: 'Rapid prototyping and low-volume production using industrial additive manufacturing technologies.',
+    icon: <Printer size={26} />,
+    accentColor: '#a855f7',
+    badge: 'Fast Turnaround',
+    features: [
+      'FDM, SLA, SLS & MJF technologies',
+      'Prototyping & end-use parts',
+      'Nylon, resin, PETG, ABS & more',
+      'Post-processing & finishing available',
+    ],
+    href: '/quotes/new/3d-printing',
+  },
+  {
+    id: 'sheet-metal',
+    title: 'Sheet Metal',
+    description: 'Laser cutting, bending, welding and fabrication. Low to mid-volume sheet metal components and assemblies.',
+    icon: <Layers size={26} />,
+    accentColor: '#f59e0b',
+    features: [
+      'Laser cutting up to 25mm mild steel',
+      'CNC bending & forming',
+      'MIG, TIG & spot welding',
+      'Powder coating & galvanising',
+    ],
+    href: '/quotes/new/sheet-metal',
+  },
+]
 
 export default function NewQuotePage() {
+  const router = useRouter()
+
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
       {/* Back link */}
-      <Link href="/quotes" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+      <Link
+        href="/quotes"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          color: 'var(--text-muted)',
+          textDecoration: 'none',
+          marginBottom: '1.5rem',
+          fontSize: '0.875rem',
+        }}
+      >
         <ArrowLeft size={16} /> Back to Quotes
       </Link>
 
-      <h1 className="page-title" style={{ marginBottom: '0.5rem' }}>Request a Quote</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-        Tell us what you need and we&apos;ll get back to you with pricing
-      </p>
+      {/* Header */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h1 className="page-title" style={{ marginBottom: '0.5rem' }}>
+          Request a Quote
+        </h1>
+        <p style={{ color: 'var(--text-muted)', maxWidth: 520 }}>
+          Choose a manufacturing service to get started. Upload your files and we&apos;ll get back to you with competitive pricing.
+        </p>
+      </div>
 
-      <form action="/api/quotes" method="POST" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '720px' }}>
-        {/* Contact / Reference */}
-        <div className="card">
-          <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Quote Details</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label htmlFor="customer_reference" className="label">Your Reference</label>
-              <input id="customer_reference" name="customer_reference" className="input-field" placeholder="e.g. PO-12345" />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label htmlFor="material_type" className="label">Material Type</label>
-              <select id="material_type" name="material_type" className="input-field">
-                <option value="">Select material...</option>
-                <option value="EPDM">EPDM</option>
-                <option value="Neoprene">Neoprene</option>
-                <option value="Nitrile">Nitrile (NBR)</option>
-                <option value="Silicone">Silicone</option>
-                <option value="Natural Rubber">Natural Rubber</option>
-                <option value="Viton">Viton (FKM)</option>
-                <option value="PVC">PVC</option>
-                <option value="TPE">TPE</option>
-              </select>
-            </div>
-          </div>
+      {/* Service Cards Grid */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '1.25rem',
+          marginBottom: '3rem',
+        }}
+      >
+        {services.map((service) => (
+          <ServiceCard
+            key={service.id}
+            icon={service.icon}
+            title={service.title}
+            description={service.description}
+            features={service.features}
+            accentColor={service.accentColor}
+            badge={service.badge}
+            onClick={() => router.push(service.href)}
+          />
+        ))}
+      </div>
+
+      {/* Help Section */}
+      <div
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1.5rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.25rem' }}>
+            Not sure which service you need?
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Our engineering team can help you choose the best manufacturing process for your project.
+          </p>
         </div>
-
-        {/* Line Items */}
-        <div className="card">
-          <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Items</h2>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Item 1 */}
-            <div style={{ padding: '1rem', borderRadius: '0.75rem', border: '1px solid var(--border)', background: 'var(--bg-primary)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <span className="badge badge-accent">Item 1</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="label">Description *</label>
-                  <input name="items[0].description" className="input-field" placeholder="Part description, dimensions, tolerances..." required />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="label">Quantity *</label>
-                  <input name="items[0].quantity" type="number" min="1" defaultValue="1" className="input-field" required />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="btn-ghost"
-            style={{ marginTop: '1rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
-          >
-            + Add Another Item
-          </button>
-        </div>
-
-        {/* Notes & Drawings */}
-        <div className="card">
-          <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Additional Information</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label htmlFor="notes" className="label">Notes / Special Requirements</label>
-              <textarea
-                id="notes"
-                name="notes"
-                className="input-field"
-                rows={4}
-                placeholder="Any additional notes, special requirements, or delivery instructions..."
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label className="label">Drawings / Documents</label>
-              <div
-                style={{
-                  border: '2px dashed var(--border)',
-                  borderRadius: '0.75rem',
-                  padding: '2rem',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.15s',
-                }}
-              >
-                <p style={{ fontSize: '0.875rem' }}>Drag and drop files here, or click to browse</p>
-                <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>PDF, DXF, DWG, STEP up to 10MB</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <Link href="/quotes" className="btn-secondary" style={{ padding: '0.625rem 1.5rem', textDecoration: 'none' }}>
-            Cancel
-          </Link>
-          <button type="submit" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.5rem' }}>
-            <Send size={16} />
-            Submit Quote Request
-          </button>
-        </div>
-      </form>
+        <button className="btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.625rem 1.25rem' }}>
+          Contact Engineering
+        </button>
+      </div>
     </div>
   )
 }

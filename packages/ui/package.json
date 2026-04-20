@@ -10,7 +10,8 @@
     "./button": "./src/button.tsx",
     "./input": "./src/input.tsx",
     "./card": "./src/card.tsx",
-    "./badge": "./src/badge.tsx"
+    "./badge": "./src/badge.tsx",
+    "./service-tabs": "./src/service-tabs.tsx"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

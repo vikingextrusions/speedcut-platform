@@ -31,6 +31,11 @@ coverage/
 playwright-report/
 test-results/
 
+# Python
+venv/
+__pycache__/
+*.pyc
+
 # Misc
 *.tsbuildinfo
 *.log

@@ -1,0 +1,13 @@
+# Docker Compose for local development services
+# Run: docker-compose up
+
+services:
+  geometry-analysis:
+    build: ./services/geometry-analysis
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./services/geometry-analysis:/app
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+    restart: unless-stopped

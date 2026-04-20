@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speedcut — STEP File Analyser</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --elevated: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #00d9e1;
+      --accent-glow: rgba(0, 217, 225, 0.15);
+      --border: rgba(255,255,255,0.1);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Drop Zone */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 1rem;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--surface);
+      position: relative;
+    }
+    .dropzone.active {
+      border-color: var(--accent);
+      background: rgba(0, 217, 225, 0.05);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+    .dropzone.error {
+      border-color: var(--error);
+    }
+    .dropzone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.6;
+    }
+    .dropzone-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .dropzone-hint {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      opacity: 0.6;
+      margin-top: 0.5rem;
+    }
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* Status */
+    .status {
+      margin-top: 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 0.75rem;
+      font-size: 0.85rem;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .status.show { display: flex; }
+    .status.loading {
+      background: rgba(0, 217, 225, 0.08);
+      border: 1px solid rgba(0, 217, 225, 0.2);
+      color: var(--accent);
+    }
+    .status.error {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: var(--error);
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid transparent;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Results */
+    .results {
+      margin-top: 1.5rem;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .results.show { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .result-filename {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .result-time {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+    }
+    .metric-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+    .metric-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+    }
+    .metric-unit {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+    .metric-card.accent {
+      border-color: rgba(0, 217, 225, 0.3);
+      background: linear-gradient(135deg, rgba(0, 217, 225, 0.08), transparent);
+    }
+    .metric-card.accent .metric-value { color: var(--accent); }
+
+    /* Pricing Table */
+    .pricing-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .pricing-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pricing-header h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .pricing-config {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.15);
+    }
+    .config-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+    }
+    .config-field label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+    .config-field select, .config-field input {
+      padding: 0.4rem 0.6rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.4rem;
+      color: var(--text);
+      font-size: 0.8rem;
+    }
+    .config-field select:focus, .config-field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .pricing-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-row:last-child { border-bottom: none; }
+    .pricing-row .label { color: var(--text-muted); }
+    .pricing-row .value { font-weight: 600; }
+    .pricing-row.total {
+      background: rgba(0, 217, 225, 0.06);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .pricing-row.total .value { color: var(--accent); }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-success {
+      background: rgba(16,185,129,0.1);
+      color: var(--success);
+      border: 1px solid rgba(16,185,129,0.2);
+    }
+    .badge-error {
+      background: rgba(239,68,68,0.1);
+      color: var(--error);
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+
+    /* History */
+    .history { margin-top: 2rem; }
+    .history h3 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: var(--text-muted);
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .history-item:hover { border-color: var(--accent); }
+    .history-item .name { font-weight: 600; }
+    .history-item .dims { color: var(--text-muted); }
+
+    .service-badge {
+      font-size: 0.6rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(239,68,68,0.1);
+      color: var(--error);
+    }
+    .service-badge[data-status="ok"] {
+      background: rgba(16,185,129,0.1);
+      color: var(--success);
+    }
+
+    #serviceStatus {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    #serviceStatus .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--error);
+    }
+    #serviceStatus.online .dot { background: var(--success); }
+  </style>
+</head>
+<body>
+
+  <div id="serviceStatus">
+    <span class="dot"></span>
+    <span id="serviceLabel">Checking service...</span>
+  </div>
+
+  <div class="container">
+    <h1>⚡ STEP File Analyser</h1>
+    <p class="subtitle">Drag & drop a STEP file to extract geometry metrics and get a rough CNC cost estimate</p>
+
+    <!-- Drop Zone -->
+    <div class="dropzone" id="dropzone">
+      <input type="file" accept=".step,.stp" id="fileInput" />
+      <div class="dropzone-icon">📐</div>
+      <div class="dropzone-text">Drop your STEP file here, or click to browse</div>
+      <div class="dropzone-hint">.step and .stp files supported</div>
+    </div>
+
+    <!-- Status -->
+    <div class="status" id="status">
+      <div class="spinner"></div>
+      <span id="statusText"></span>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+      <div class="result-header">
+        <span class="result-filename" id="resultFilename"></span>
+        <span class="result-time" id="resultTime"></span>
+      </div>
+
+      <!-- Geometry Metrics -->
+      <div class="metrics-grid" id="metricsGrid"></div>
+
+      <!-- Pricing -->
+      <div class="pricing-section" id="pricingSection">
+        <div class="pricing-header">
+          <h3>💰 Rough CNC Estimate</h3>
+          <span class="badge badge-success">Instant</span>
+        </div>
+        <div class="pricing-config">
+          <div class="config-field">
+            <label>Material</label>
+            <select id="materialSelect" onchange="recalcPrice()">
+              <option value="aluminium_6082" data-density="2.71" data-price="8.50" data-rate="0.005">Aluminium 6082-T6</option>
+              <option value="aluminium_7075" data-density="2.81" data-price="12.00" data-rate="0.006">Aluminium 7075</option>
+              <option value="mild_steel" data-density="7.85" data-price="3.50" data-rate="0.008">Mild Steel</option>
+              <option value="ss_304" data-density="8.00" data-price="9.00" data-rate="0.012">Stainless Steel 304</option>
+              <option value="ss_316" data-density="8.00" data-price="11.00" data-rate="0.014">Stainless Steel 316</option>
+              <option value="brass" data-density="8.73" data-price="14.00" data-rate="0.007">Brass</option>
+              <option value="titanium" data-density="4.43" data-price="45.00" data-rate="0.025">Titanium Grade 5</option>
+              <option value="delrin" data-density="1.41" data-price="12.00" data-rate="0.003">Acetal (Delrin)</option>
+              <option value="nylon" data-density="1.14" data-price="15.00" data-rate="0.003">Nylon 6</option>
+            </select>
+          </div>
+          <div class="config-field">
+            <label>Quantity</label>
+            <input type="number" id="qtyInput" value="1" min="1" max="10000" onchange="recalcPrice()" />
+          </div>
+          <div class="config-field">
+            <label>Lead Time</label>
+            <select id="leadTimeSelect" onchange="recalcPrice()">
+              <option value="1.0">Standard (10-15 days)</option>
+              <option value="1.3">Express (5-7 days)</option>
+              <option value="1.6">Rush (3-5 days)</option>
+            </select>
+          </div>
+        </div>
+        <div id="pricingRows"></div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history" id="history" style="display:none">
+      <h3>Recent Analyses</h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:8100';
+    let currentAnalysis = null;
+    const analysisHistory = [];
+
+    // ─── Service Health Check ───
+    async function checkService() {
+      const el = document.getElementById('serviceStatus');
+      const label = document.getElementById('serviceLabel');
+      try {
+        const r = await fetch(`${API_URL}/health`);
+        if (r.ok) {
+          el.classList.add('online');
+          label.textContent = 'Service Online';
+        } else { throw new Error(); }
+      } catch {
+        el.classList.remove('online');
+        label.textContent = 'Service Offline — start with: uvicorn main:app --port 8100';
+      }
+    }
+    checkService();
+    setInterval(checkService, 5000);
+
+    // ─── Drop Zone ───
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('active');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('active'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('active');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    // ─── File Handler ───
+    async function handleFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['step', 'stp'].includes(ext)) {
+        showStatus('error', `Unsupported file: .${ext} — only .step and .stp files`);
+        return;
+      }
+
+      showStatus('loading', `Analysing ${file.name}...`);
+      hideResults();
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const r = await fetch(`${API_URL}/analyse`, { method: 'POST', body: formData });
+        const data = await r.json();
+
+        hideStatus();
+
+        if (data.success) {
+          currentAnalysis = data.analysis;
+          showResults(data);
+          addToHistory(data);
+        } else {
+          showStatus('error', `Analysis failed: ${data.error}`);
+        }
+      } catch (err) {
+        showStatus('error', 'Cannot connect to analysis service. Is it running on port 8100?');
+      }
+    }
+
+    // ─── Status ───
+    function showStatus(type, text) {
+      const el = document.getElementById('status');
+      el.className = `status show ${type}`;
+      document.getElementById('statusText').textContent = text;
+      if (type === 'loading') {
+        el.querySelector('.spinner').style.display = 'block';
+      } else {
+        el.querySelector('.spinner').style.display = 'none';
+      }
+    }
+    function hideStatus() {
+      document.getElementById('status').classList.remove('show');
+    }
+
+    // ─── Results ───
+    function showResults(data) {
+      const a = data.analysis;
+      document.getElementById('resultFilename').textContent = data.filename;
+      document.getElementById('resultTime').textContent = `Processed in ${data.processing_time_ms.toFixed(0)}ms`;
+
+      const bb = a.bounding_box;
+      const metrics = [
+        { label: 'Volume', value: formatNum(a.volume_mm3), unit: 'mm³', accent: false },
+        { label: 'Surface Area', value: formatNum(a.surface_area_mm2), unit: 'mm²', accent: false },
+        { label: 'Bounding Box', value: `${bb.x_mm.toFixed(1)} × ${bb.y_mm.toFixed(1)} × ${bb.z_mm.toFixed(1)}`, unit: 'mm', accent: false },
+        { label: 'Material Removal', value: (a.material_removal_ratio * 100).toFixed(1), unit: '%', accent: true },
+        { label: 'Faces', value: a.face_count, unit: '', accent: false },
+        { label: 'Watertight', value: a.is_watertight ? 'Yes ✓' : 'No ✗', unit: '', accent: a.is_watertight },
+      ];
+
+      const grid = document.getElementById('metricsGrid');
+      grid.innerHTML = metrics.map(m => `
+        <div class="metric-card ${m.accent ? 'accent' : ''}">
+          <div class="metric-label">${m.label}</div>
+          <div class="metric-value">${m.value}<span class="metric-unit">${m.unit}</span></div>
+        </div>
+      `).join('');
+
+      recalcPrice();
+      document.getElementById('results').classList.add('show');
+    }
+
+    function hideResults() {
+      document.getElementById('results').classList.remove('show');
+    }
+
+    // ─── Pricing ───
+    function recalcPrice() {
+      if (!currentAnalysis) return;
+
+      const a = currentAnalysis;
+      const sel = document.getElementById('materialSelect');
+      const opt = sel.options[sel.selectedIndex];
+      const density = parseFloat(opt.dataset.density) * 1e-6; // kg/mm³
+      const pricePerKg = parseFloat(opt.dataset.price);
+      const removalRate = parseFloat(opt.dataset.rate);
+      const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+      const leadMult = parseFloat(document.getElementById('leadTimeSelect').value);
+
+      const stockMass = a.stock_volume_mm3 * density;
+      const partMass = a.volume_mm3 * density;
+      const materialCost = stockMass * pricePerKg;
+      const removalVol = a.stock_volume_mm3 - a.volume_mm3;
+      const machiningCost = removalVol * removalRate;
+      const setupCost = 25.00;
+      const unitCost = (materialCost + machiningCost + setupCost) * leadMult;
+
+      // Volume discount
+      let discount = 1.0;
+      if (qty >= 100) discount = 0.70;
+      else if (qty >= 50) discount = 0.78;
+      else if (qty >= 25) discount = 0.85;
+      else if (qty >= 10) discount = 0.90;
+      else if (qty >= 5) discount = 0.95;
+
+      const discountedUnit = unitCost * discount;
+      const totalCost = discountedUnit * qty;
+
+      const rows = [
+        { label: `Part Mass`, value: `${(partMass * 1000).toFixed(1)} g` },
+        { label: `Stock Material`, value: `£${materialCost.toFixed(2)}` },
+        { label: `Machining (${formatNum(removalVol)} mm³ removed)`, value: `£${machiningCost.toFixed(2)}` },
+        { label: `Setup`, value: `£${setupCost.toFixed(2)}` },
+      ];
+
+      if (leadMult > 1) {
+        rows.push({ label: `Lead Time Surcharge (×${leadMult})`, value: `+£${((unitCost / leadMult) * (leadMult - 1)).toFixed(2)}` });
+      }
+      if (discount < 1) {
+        rows.push({ label: `Volume Discount (${qty} off, ${((1 - discount) * 100).toFixed(0)}% off)`, value: `-£${((unitCost - discountedUnit)).toFixed(2)}` });
+      }
+
+      rows.push({ label: `Unit Price`, value: `£${discountedUnit.toFixed(2)}`, total: false });
+      rows.push({ label: `Total (${qty} off)`, value: `£${totalCost.toFixed(2)}`, total: true });
+
+      document.getElementById('pricingRows').innerHTML = rows.map(r =>
+        `<div class="pricing-row ${r.total ? 'total' : ''}">
+          <span class="label">${r.label}</span>
+          <span class="value">${r.value}</span>
+        </div>`
+      ).join('');
+    }
+
+    // ─── History ───
+    function addToHistory(data) {
+      analysisHistory.unshift(data);
+      const el = document.getElementById('history');
+      el.style.display = 'block';
+      const list = document.getElementById('historyList');
+      const bb = data.analysis.bounding_box;
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <span class="name">${data.filename}</span>
+        <span class="dims">${bb.x_mm.toFixed(1)} × ${bb.y_mm.toFixed(1)} × ${bb.z_mm.toFixed(1)} mm</span>
+        <span>${data.processing_time_ms.toFixed(0)}ms</span>
+      `;
+      item.onclick = () => { currentAnalysis = data.analysis; showResults(data); };
+      list.prepend(item);
+    }
+
+    // ─── Helpers ───
+    function formatNum(n) {
+      return n.toLocaleString('en-GB', { maximumFractionDigits: 2 });
+    }
+  </script>
+</body>
+</html>

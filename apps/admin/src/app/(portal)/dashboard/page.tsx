@@ -5,98 +5,14 @@ import {
   FileText,
   Package,
   Receipt,
-  CreditCard,
-  ShoppingCart,
   Building2,
   Factory,
-  TrendingUp,
-  ArrowRight,
+  ShoppingCart,
   Activity,
-  Clock,
 } from 'lucide-react'
-
-/* ─── Status badge helper ─── */
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    draft: 'badge-info',
-    submitted: 'badge-info',
-    reviewing: 'badge-warning',
-    priced: 'badge-accent',
-    sent: 'badge-accent',
-    accepted: 'badge-success',
-    rejected: 'badge-error',
-    expired: 'badge-error',
-    confirmed: 'badge-info',
-    in_production: 'badge-warning',
-    quality_check: 'badge-warning',
-    ready_to_ship: 'badge-accent',
-    shipped: 'badge-accent',
-    delivered: 'badge-success',
-    completed: 'badge-success',
-    cancelled: 'badge-error',
-    paid: 'badge-success',
-    overdue: 'badge-error',
-    void: 'badge-error',
-    ordered: 'badge-info',
-    received: 'badge-success',
-    allocated: 'badge-success',
-  }
-  return (
-    <span className={`badge ${colors[status] || 'badge-info'}`}>
-      {status.replace(/_/g, ' ')}
-    </span>
-  )
-}
-
-/* ─── Stat Card ─── */
-function StatCard({
-  label,
-  value,
-  icon,
-  href,
-  accent,
-}: {
-  label: string
-  value: number | string
-  icon: React.ReactNode
-  href: string
-  accent?: string
-}) {
-  return (
-    <Link href={href} className="card-hover group" style={{ padding: 0, textDecoration: 'none', color: 'inherit' }}>
-      <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <p className="micro-label" style={{ marginBottom: '0.5rem' }}>{label}</p>
-          <p style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1 }}>{value}</p>
-        </div>
-        <div
-          style={{
-            padding: '0.75rem',
-            borderRadius: '0.75rem',
-            backgroundColor: accent ? `${accent}15` : 'var(--accent-glow)',
-            color: accent || 'var(--accent)',
-          }}
-        >
-          {icon}
-        </div>
-      </div>
-      <div
-        style={{
-          padding: '0.75rem 1.5rem',
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '0.8rem',
-          color: 'var(--text-muted)',
-        }}
-      >
-        <span>View all</span>
-        <ArrowRight size={14} />
-      </div>
-    </Link>
-  )
-}
+import { StatusBadge } from '@speedcut/ui/status-badge'
+import { StatCard } from '@speedcut/ui/stat-card'
+import { PageHeader } from '@speedcut/ui/page-header'
 
 /* ─── Page ─── */
 export default async function AdminDashboardPage() {
@@ -169,57 +85,19 @@ export default async function AdminDashboardPage() {
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 className="page-title">{greeting}, {profile?.full_name || 'there'}</h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Platform overview and operations
-        </p>
-      </div>
+      <PageHeader
+        title={`${greeting}, ${profile?.full_name || 'there'}`}
+        subtitle="Platform overview and operations"
+      />
 
       {/* Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <StatCard
-          label="Total Quotes"
-          value={quoteCount || 0}
-          icon={<FileText size={24} />}
-          href="/quotes"
-        />
-        <StatCard
-          label="Active Orders"
-          value={activeOrderCount || 0}
-          icon={<Package size={24} />}
-          href="/orders"
-          accent="#3b82f6"
-        />
-        <StatCard
-          label="Unpaid Invoices"
-          value={unpaidInvoiceCount || 0}
-          icon={<Receipt size={24} />}
-          href="/invoices"
-          accent="#f59e0b"
-        />
-        <StatCard
-          label="Customers"
-          value={customerCount || 0}
-          icon={<Building2 size={24} />}
-          href="/customers"
-          accent="#10b981"
-        />
-        <StatCard
-          label="Partners"
-          value={partnerCount || 0}
-          icon={<Factory size={24} />}
-          href="/partners"
-          accent="#8b5cf6"
-        />
-        <StatCard
-          label="Open POs"
-          value={pendingPOCount || 0}
-          icon={<ShoppingCart size={24} />}
-          href="/purchase-orders"
-          accent="#ef4444"
-        />
+        <StatCard label="Total Quotes" value={quoteCount || 0} icon={<FileText size={24} />} href="/quotes" />
+        <StatCard label="Active Orders" value={activeOrderCount || 0} icon={<Package size={24} />} href="/orders" accent="#3b82f6" />
+        <StatCard label="Unpaid Invoices" value={unpaidInvoiceCount || 0} icon={<Receipt size={24} />} href="/invoices" accent="#f59e0b" />
+        <StatCard label="Customers" value={customerCount || 0} icon={<Building2 size={24} />} href="/customers" accent="#10b981" />
+        <StatCard label="Partners" value={partnerCount || 0} icon={<Factory size={24} />} href="/partners" accent="#8b5cf6" />
+        <StatCard label="Open POs" value={pendingPOCount || 0} icon={<ShoppingCart size={24} />} href="/purchase-orders" accent="#ef4444" />
       </div>
 
       {/* Content Grid */}
@@ -253,7 +131,10 @@ export default async function AdminDashboardPage() {
               ))}
             </div>
           ) : (
-            <EmptyState icon={<FileText size={32} />} message="No quotes yet" />
+            <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.5 }}><FileText size={32} /></div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No quotes yet</p>
+            </div>
           )}
         </div>
 
@@ -286,7 +167,10 @@ export default async function AdminDashboardPage() {
               ))}
             </div>
           ) : (
-            <EmptyState icon={<Package size={32} />} message="No orders yet" />
+            <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.5 }}><Package size={32} /></div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No orders yet</p>
+            </div>
           )}
         </div>
 
@@ -320,7 +204,10 @@ export default async function AdminDashboardPage() {
               ))}
             </div>
           ) : (
-            <EmptyState icon={<Activity size={32} />} message="No activity yet" />
+            <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.5 }}><Activity size={32} /></div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No activity yet</p>
+            </div>
           )}
         </div>
       </div>
@@ -338,22 +225,6 @@ export default async function AdminDashboardPage() {
           }
         }
       `}</style>
-    </div>
-  )
-}
-
-/* ─── Empty State Component ─── */
-function EmptyState({
-  icon,
-  message,
-}: {
-  icon: React.ReactNode
-  message: string
-}) {
-  return (
-    <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
-      <div style={{ color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.5 }}>{icon}</div>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{message}</p>
     </div>
   )
 }

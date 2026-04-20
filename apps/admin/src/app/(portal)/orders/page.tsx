@@ -1,15 +1,64 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { Package, Plus } from 'lucide-react'
+import { Package } from 'lucide-react'
+import { StatusBadge } from '@speedcut/ui/status-badge'
+import { PageHeader } from '@speedcut/ui/page-header'
+import { DataTable } from '@speedcut/ui/data-table'
+import type { DataTableColumn } from '@speedcut/ui/data-table'
+import { EmptyState } from '@speedcut/ui/empty-state'
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    draft: 'badge-info', confirmed: 'badge-info', in_production: 'badge-warning',
-    quality_check: 'badge-warning', ready_to_ship: 'badge-accent', shipped: 'badge-accent',
-    delivered: 'badge-success', completed: 'badge-success', cancelled: 'badge-error',
-  }
-  return <span className={`badge ${colors[status] || 'badge-info'}`}>{status.replace(/_/g, ' ')}</span>
+type OrderRow = {
+  id: string
+  order_number: string
+  status: string
+  total_amount: number
+  order_date: string
+  required_date: string | null
+  customer_reference: string | null
+  organizations: { name: string } | null
 }
+
+const columns: DataTableColumn<OrderRow>[] = [
+  {
+    key: 'order_number',
+    header: 'Order #',
+    render: (row) => (
+      <Link href={`/orders/${row.id}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+        {row.order_number}
+      </Link>
+    ),
+  },
+  {
+    key: 'customer',
+    header: 'Customer',
+    render: (row) => row.organizations?.name || '—',
+  },
+  {
+    key: 'customer_ref',
+    header: 'Customer Ref',
+    render: (row) => <span style={{ color: 'var(--text-muted)' }}>{row.customer_reference || '—'}</span>,
+  },
+  {
+    key: 'date',
+    header: 'Date',
+    render: (row) => new Date(row.order_date).toLocaleDateString(),
+  },
+  {
+    key: 'required',
+    header: 'Required By',
+    render: (row) => row.required_date ? new Date(row.required_date).toLocaleDateString() : '—',
+  },
+  {
+    key: 'total',
+    header: 'Total',
+    render: (row) => <span style={{ fontWeight: 700 }}>£{row.total_amount.toFixed(2)}</span>,
+  },
+  {
+    key: 'status',
+    header: 'Status',
+    render: (row) => <StatusBadge status={row.status} />,
+  },
+]
 
 export default async function AdminOrdersPage() {
   const supabase = await createClient()
@@ -24,56 +73,25 @@ export default async function AdminOrdersPage() {
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 className="page-title">Orders</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>Manage all platform orders</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Orders"
+        subtitle="Manage all platform orders"
+      />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {orders && orders.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={thStyle}>Order #</th>
-                  <th style={thStyle}>Customer</th>
-                  <th style={thStyle}>Customer Ref</th>
-                  <th style={thStyle}>Date</th>
-                  <th style={thStyle}>Required By</th>
-                  <th style={thStyle}>Total</th>
-                  <th style={thStyle}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o: any) => (
-                  <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={tdStyle}>
-                      <Link href={`/orders/${o.id}`} style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>{o.order_number}</Link>
-                    </td>
-                    <td style={tdStyle}>{o.organizations?.name || '—'}</td>
-                    <td style={tdStyle}><span style={{ color: 'var(--text-muted)' }}>{o.customer_reference || '—'}</span></td>
-                    <td style={tdStyle}>{new Date(o.order_date).toLocaleDateString()}</td>
-                    <td style={tdStyle}>{o.required_date ? new Date(o.required_date).toLocaleDateString() : '—'}</td>
-                    <td style={{ ...tdStyle, fontWeight: 700 }}>£{o.total_amount.toFixed(2)}</td>
-                    <td style={tdStyle}><StatusBadge status={o.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-            <div style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }}><Package size={48} /></div>
-            <h3 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>No orders yet</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Orders will appear here once quotes are accepted</p>
-          </div>
-        )}
+        <DataTable
+          columns={columns}
+          data={(orders as OrderRow[]) || []}
+          getRowKey={(row) => row.id}
+          emptyState={
+            <EmptyState
+              icon={<Package size={48} />}
+              title="No orders yet"
+              message="Orders will appear here once quotes are accepted"
+            />
+          }
+        />
       </div>
     </div>
   )
 }
-
-const thStyle: React.CSSProperties = { padding: '0.875rem 1.25rem', textAlign: 'left', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }
-const tdStyle: React.CSSProperties = { padding: '0.875rem 1.25rem', whiteSpace: 'nowrap' }

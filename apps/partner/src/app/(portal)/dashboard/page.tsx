@@ -5,83 +5,11 @@ import {
   FileCheck,
   Package,
   Truck,
-  TrendingUp,
-  ArrowRight,
-  Clock,
 } from 'lucide-react'
-
-/* ─── Status badge helper ─── */
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    pending: 'badge-warning',
-    accepted: 'badge-success',
-    declined: 'badge-error',
-    completed: 'badge-success',
-    draft: 'badge-info',
-    confirmed: 'badge-info',
-    in_production: 'badge-warning',
-    quality_check: 'badge-warning',
-    ready_to_ship: 'badge-accent',
-    shipped: 'badge-accent',
-    delivered: 'badge-success',
-    cancelled: 'badge-error',
-  }
-  return (
-    <span className={`badge ${colors[status] || 'badge-info'}`}>
-      {status.replace(/_/g, ' ')}
-    </span>
-  )
-}
-
-/* ─── Stat Card ─── */
-function StatCard({
-  label,
-  value,
-  icon,
-  href,
-  accent,
-}: {
-  label: string
-  value: number | string
-  icon: React.ReactNode
-  href: string
-  accent?: string
-}) {
-  return (
-    <Link href={href} className="card-hover group" style={{ padding: 0, textDecoration: 'none', color: 'inherit' }}>
-      <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <p className="micro-label" style={{ marginBottom: '0.5rem' }}>{label}</p>
-          <p style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1 }}>{value}</p>
-        </div>
-        <div
-          style={{
-            padding: '0.75rem',
-            borderRadius: '0.75rem',
-            backgroundColor: accent ? `${accent}15` : 'var(--accent-glow)',
-            color: accent || 'var(--accent)',
-          }}
-        >
-          {icon}
-        </div>
-      </div>
-      <div
-        style={{
-          padding: '0.75rem 1.5rem',
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '0.8rem',
-          color: 'var(--text-muted)',
-        }}
-      >
-        <span>View all</span>
-        <ArrowRight size={14} />
-      </div>
-    </Link>
-  )
-}
+import { StatusBadge } from '@speedcut/ui/status-badge'
+import { StatCard } from '@speedcut/ui/stat-card'
+import { PageHeader } from '@speedcut/ui/page-header'
+import { EmptyState } from '@speedcut/ui/empty-state'
 
 /* ─── Page ─── */
 export default async function DashboardPage() {
@@ -159,36 +87,16 @@ export default async function DashboardPage() {
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 className="page-title">{greeting}, {profile?.full_name || 'there'}</h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Here&apos;s an overview of your partner activity
-        </p>
-      </div>
+      <PageHeader
+        title={`${greeting}, ${profile?.full_name || 'there'}`}
+        subtitle="Here's an overview of your partner activity"
+      />
 
       {/* Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <StatCard
-          label="Pending Assignments"
-          value={pendingAssignments}
-          icon={<FileCheck size={24} />}
-          href="/assignments"
-        />
-        <StatCard
-          label="Active Orders"
-          value={activeOrders}
-          icon={<Package size={24} />}
-          href="/orders"
-          accent="#3b82f6"
-        />
-        <StatCard
-          label="Pending Deliveries"
-          value={pendingDeliveries}
-          icon={<Truck size={24} />}
-          href="/delivery-notes"
-          accent="#f59e0b"
-        />
+        <StatCard label="Pending Assignments" value={pendingAssignments} icon={<FileCheck size={24} />} href="/assignments" />
+        <StatCard label="Active Orders" value={activeOrders} icon={<Package size={24} />} href="/orders" accent="#3b82f6" />
+        <StatCard label="Pending Deliveries" value={pendingDeliveries} icon={<Truck size={24} />} href="/delivery-notes" accent="#f59e0b" />
       </div>
 
       {/* Tables Row */}
@@ -208,14 +116,9 @@ export default async function DashboardPage() {
                   key={a.id}
                   href={`/assignments/${a.id}`}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '0.875rem 1.5rem',
-                    borderBottom: '1px solid var(--border)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    transition: 'background-color 0.15s',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.875rem 1.5rem', borderBottom: '1px solid var(--border)',
+                    textDecoration: 'none', color: 'inherit', transition: 'background-color 0.15s',
                   }}
                 >
                   <div>
@@ -226,14 +129,12 @@ export default async function DashboardPage() {
                       {new Date(a.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <StatusBadge status={a.status} />
-                  </div>
+                  <StatusBadge status={a.status} />
                 </Link>
               ))}
             </div>
           ) : (
-            <EmptyState icon={<FileCheck size={32} />} message="No assignments yet" />
+            <EmptyState icon={<FileCheck size={32} />} title="No assignments" message="No assignments yet" />
           )}
         </div>
 
@@ -252,14 +153,9 @@ export default async function DashboardPage() {
                   key={o.id}
                   href={`/orders/${o.id}`}
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '0.875rem 1.5rem',
-                    borderBottom: '1px solid var(--border)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    transition: 'background-color 0.15s',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.875rem 1.5rem', borderBottom: '1px solid var(--border)',
+                    textDecoration: 'none', color: 'inherit', transition: 'background-color 0.15s',
                   }}
                 >
                   <div>
@@ -278,37 +174,10 @@ export default async function DashboardPage() {
               ))}
             </div>
           ) : (
-            <EmptyState icon={<Package size={32} />} message="No orders yet" />
+            <EmptyState icon={<Package size={32} />} title="No orders" message="No orders yet" />
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-/* ─── Empty State Component ─── */
-function EmptyState({
-  icon,
-  message,
-  action,
-}: {
-  icon: React.ReactNode
-  message: string
-  action?: { label: string; href: string }
-}) {
-  return (
-    <div style={{ padding: '3rem 1.5rem', textAlign: 'center' }}>
-      <div style={{ color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.5 }}>{icon}</div>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{message}</p>
-      {action && (
-        <Link
-          href={action.href}
-          className="btn-primary"
-          style={{ marginTop: '1rem', display: 'inline-flex', padding: '0.5rem 1rem', fontSize: '0.8rem', textDecoration: 'none' }}
-        >
-          {action.label}
-        </Link>
-      )}
     </div>
   )
 }

@@ -12,7 +12,13 @@
     "./card": "./src/card.tsx",
     "./badge": "./src/badge.tsx",
     "./service-tabs": "./src/service-tabs.tsx",
-    "./quote-line-item": "./src/quote-line-item.tsx"
+    "./quote-line-item": "./src/quote-line-item.tsx",
+    "./status-badge": "./src/status-badge.tsx",
+    "./stat-card": "./src/stat-card.tsx",
+    "./empty-state": "./src/empty-state.tsx",
+    "./page-header": "./src/page-header.tsx",
+    "./data-table": "./src/data-table.tsx",
+    "./detail-layout": "./src/detail-layout.tsx"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",

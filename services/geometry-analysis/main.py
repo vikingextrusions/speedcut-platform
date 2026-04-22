@@ -11,12 +11,15 @@ import os
 import math
 import tempfile
 import time
+import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import redis
 import cadquery as cq
 from OCP.BRep import BRep_Tool
 from OCP.BRepGProp import BRepGProp
@@ -44,6 +47,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+
 
 # ─── Response Models ───
 
@@ -68,12 +75,20 @@ class GeometryAnalysis(BaseModel):
     process_confidence: Optional[float] = None
 
 
-class AnalysisResponse(BaseModel):
-    success: bool
-    filename: str
-    analysis: Optional[GeometryAnalysis] = None
+class AnalysisJobResponse(BaseModel):
+    job_id: str
+    status: str
+    estimated_seconds: int
+    websocket_channel: str
+
+
+class AnalysisStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    result: Optional[GeometryAnalysis] = None
     error: Optional[str] = None
-    processing_time_ms: float
+    created_at: str
+    completed_at: Optional[str] = None
 
 
 # ─── Analysis Logic ───
@@ -278,21 +293,50 @@ def analyse_step_file(file_path: str) -> GeometryAnalysis:
 
 # ─── Endpoints ───
 
+def run_analysis_task(job_id: str, tmp_path: str, ext: str, original_filename: str):
+    start_time = time.time()
+    try:
+        redis_client.hset(f"job:{job_id}", mapping={"status": "processing"})
+        
+        if ext in (".stl", ".obj"):
+            analysis = analyse_mesh_file(tmp_path, ext)
+        else:
+            analysis = analyse_step_file(tmp_path)
+            
+        processing_time = (time.time() - start_time) * 1000
+        
+        redis_payload = {
+            "status": "complete",
+            "result": analysis.model_dump_json(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "processing_time_ms": str(round(processing_time, 1))
+        }
+        redis_client.hset(f"job:{job_id}", mapping=redis_payload)
+        
+    except Exception as e:
+        redis_client.hset(f"job:{job_id}", mapping={
+            "status": "failed",
+            "error": str(e),
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        })
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
 @app.get("/health")
 def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "geometry-analysis"}
 
 
-@app.post("/analyse", response_model=AnalysisResponse)
-async def analyse(file: UploadFile = File(...)):
+@app.post("/analyse", response_model=AnalysisJobResponse, status_code=status.HTTP_202_ACCEPTED)
+async def queue_analysis(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """
-    Upload a STEP file and receive geometry analysis.
-    
-    Accepts .step and .stp files. Returns volume, surface area,
-    bounding box dimensions, and manufacturability metrics.
+    Queue a CAD file for asynchronous geometry analysis.
     """
-    # Validate file extension
     filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     
@@ -302,54 +346,64 @@ async def analyse(file: UploadFile = File(...)):
             detail=f"Unsupported file type: {ext}. Supported formats: .step, .stp, .stl, .obj.",
         )
     
-    start_time = time.time()
+    job_id = str(uuid.uuid4())
     
-    # Save to temp file (CadQuery needs a file path)
     try:
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
-        
-        # Run the analysis
-        if ext in (".stl", ".obj"):
-            analysis = analyse_mesh_file(tmp_path, ext)
-        else:
-            analysis = analyse_step_file(tmp_path)
-        
-        processing_time = (time.time() - start_time) * 1000
-        
-        return AnalysisResponse(
-            success=True,
-            filename=filename,
-            analysis=analysis,
-            processing_time_ms=round(processing_time, 1),
-        )
-    
     except Exception as e:
-        processing_time = (time.time() - start_time) * 1000
-        return AnalysisResponse(
-            success=False,
-            filename=filename,
-            error=str(e),
-            processing_time_ms=round(processing_time, 1),
-        )
-    
-    finally:
-        # Clean up temp file
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        redis_client.hset(f"job:{job_id}", mapping={
+            "job_id": job_id,
+            "status": "queued",
+            "created_at": now,
+            "filename": filename
+        })
+        redis_client.expire(f"job:{job_id}", 86400)
+    except redis.exceptions.ConnectionError:
         try:
             os.unlink(tmp_path)
         except Exception:
             pass
+        raise HTTPException(status_code=503, detail="Redis connection failed. Async processing unavailable.")
+        
+    background_tasks.add_task(run_analysis_task, job_id, tmp_path, ext, filename)
+    
+    return AnalysisJobResponse(
+        job_id=job_id,
+        status="queued",
+        estimated_seconds=15,
+        websocket_channel=f"analysis:{job_id}"
+    )
 
 
-@app.post("/analyse/batch", response_model=list[AnalysisResponse])
-async def analyse_batch(files: list[UploadFile] = File(...)):
+@app.get("/analyse/{job_id}", response_model=AnalysisStatusResponse)
+async def get_analysis_status(job_id: str):
     """
-    Upload multiple STEP files and receive analysis for each.
+    Poll the status of an active analysis job.
     """
-    results = []
-    for file in files:
-        result = await analyse(file)
-        results.append(result)
-    return results
+    try:
+        job_data = redis_client.hgetall(f"job:{job_id}")
+    except redis.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="Redis connection failed.")
+        
+    if not job_data:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    result_obj = None
+    if job_data.get("result"):
+        result_obj = GeometryAnalysis.model_validate_json(job_data["result"])
+        
+    return AnalysisStatusResponse(
+        job_id=job_data["job_id"],
+        status=job_data["status"],
+        result=result_obj,
+        error=job_data.get("error"),
+        created_at=job_data["created_at"],
+        completed_at=job_data.get("completed_at")
+    )

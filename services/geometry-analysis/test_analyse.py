@@ -9,6 +9,7 @@ Usage:
 import sys
 import json
 import requests
+import time
 
 
 def test_health():
@@ -33,16 +34,42 @@ def test_analyse(file_path: str):
             files={"file": (file_path.split("\\")[-1].split("/")[-1], f, "application/octet-stream")},
         )
     
-    data = r.json()
+    if r.status_code not in (200, 202):
+        print(f"✗ Failed to queue analysis: {r.text}")
+        return
+        
+    job_data = r.json()
+    job_id = job_data["job_id"]
+    print(f"✓ Job queued successfully! Job ID: {job_id}")
+    print("  Polling for completion...")
     
-    if not data["success"]:
-        print(f"✗ Analysis failed: {data.get('error', 'Unknown error')}")
+    # Poll
+    while True:
+        status_req = requests.get(f"http://localhost:8100/analyse/{job_id}")
+        if status_req.status_code != 200:
+            print(f"✗ Failed to get status: {status_req.text}")
+            return
+            
+        status_data = status_req.json()
+        status_state = status_data["status"]
+        
+        if status_state == "complete":
+            break
+        elif status_state == "failed":
+            print(f"✗ Analysis failed: {status_data.get('error', 'Unknown error')}")
+            return
+            
+        print("  ... still processing ...")
+        time.sleep(2)
+        
+    a = status_data["result"]
+    if not a:
+        print("✗ No result available after completion.")
         return
     
-    a = data["analysis"]
     bb = a["bounding_box"]
     
-    print(f"✓ Analysis complete in {data['processing_time_ms']:.0f}ms\n")
+    print(f"\n✓ Analysis complete!\n")
     print(f"  Volume:            {a['volume_mm3']:,.2f} mm³")
     print(f"  Surface Area:      {a['surface_area_mm2']:,.2f} mm²")
     print(f"  Bounding Box:      {bb['x_mm']:.1f} × {bb['y_mm']:.1f} × {bb['z_mm']:.1f} mm")

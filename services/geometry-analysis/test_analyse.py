@@ -52,6 +52,11 @@ def test_analyse(file_path: str):
     print(f"  Solids:            {a['solid_count']}")
     print(f"  Watertight:        {'Yes ✓' if a['is_watertight'] else 'No ✗'}")
     
+    print(f"\n  [Phase 2 Metrics]")
+    print(f"  Wall Thickness:    ~{a.get('wall_thickness_min_mm', 'N/A')} mm")
+    print(f"  Complexity Score:  {a.get('complexity_score', 0):.2f}/1.0")
+    print(f"  Process Rec:       {a.get('recommended_process', 'Unknown')} ({a.get('process_confidence', 0)*100:.1f}%)")
+    
     # Rough CNC cost estimate (for demonstration)
     print(f"\n{'─' * 50}")
     print("  ROUGH CNC ESTIMATE (aluminium 6082-T6)")

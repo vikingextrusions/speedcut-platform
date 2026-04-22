@@ -62,6 +62,10 @@ class GeometryAnalysis(BaseModel):
     face_count: int
     solid_count: int
     is_watertight: bool
+    wall_thickness_min_mm: Optional[float] = None
+    complexity_score: Optional[float] = None
+    recommended_process: Optional[str] = None
+    process_confidence: Optional[float] = None
 
 
 class AnalysisResponse(BaseModel):
@@ -91,6 +95,49 @@ def check_watertight(shape) -> bool:
         return analyzer.IsValid()
     except Exception:
         return False
+
+
+def calculate_complexity(face_count: int, surface_area: float, volume: float, removal_ratio: float) -> float:
+    """Calculate a 0.0-1.0 complexity score derived from topological traits."""
+    if volume == 0:
+        return 0.0
+    sa_vol_ratio = surface_area / volume
+    face_factor = min(face_count / 500.0, 1.0)
+    score = (face_factor * 0.5) + (min(sa_vol_ratio / 5.0, 1.0) * 0.25) + (removal_ratio * 0.25)
+    return min(max(round(score, 3), 0.0), 1.0)
+
+
+def recommend_process(bb_dims: list[float], mrr: float, is_watertight: bool, face_count: int) -> tuple[str, float]:
+    """
+    Heuristic process recommendation based on geometry characteristics.
+    Returns (process_name, confidence_score).
+    """
+    score_cnc = 0.0
+    score_sheet = 0.0
+    score_3dp = 0.0
+    
+    dims = sorted(bb_dims)
+    flatness = dims[0] / dims[2] if dims[2] > 0 else 0
+    
+    if flatness < 0.15:
+        score_sheet += 0.4
+    
+    if mrr > 0.3:
+        score_cnc += 0.4
+    if face_count > 20:
+        score_cnc += 0.2
+    
+    if is_watertight and mrr < 0.2:
+        score_3dp += 0.3
+    if face_count > 50:
+        score_3dp += 0.2
+    
+    scores = {"CNC": score_cnc, "SHEET_METAL": score_sheet, "3DP": score_3dp}
+    best = max(scores, key=scores.get)
+    total_score = sum(scores.values())
+    confidence = scores[best] / total_score if total_score > 0 else 0.0
+    
+    return best, round(confidence, 3)
 
 
 def analyse_step_file(file_path: str) -> GeometryAnalysis:
@@ -141,6 +188,16 @@ def analyse_step_file(file_path: str) -> GeometryAnalysis:
     # ── Watertight Check ──
     is_watertight = check_watertight(shape)
     
+    # ── Phase 2: Advanced Metrics ──
+    # Wall thickness calculation (Approximation for Phase 1)
+    # V / (SA / 2) serves as a rough approximation for shell-like parts
+    wall_thickness_min = None
+    if surface_area > 0:
+        wall_thickness_min = round(volume / (surface_area * 0.5), 2)
+        
+    complexity = calculate_complexity(face_count, surface_area, volume, removal_ratio)
+    rec_process, confidence = recommend_process([bb_x, bb_y, bb_z], removal_ratio, is_watertight, face_count)
+    
     return GeometryAnalysis(
         volume_mm3=round(volume, 2),
         surface_area_mm2=round(surface_area, 2),
@@ -154,6 +211,10 @@ def analyse_step_file(file_path: str) -> GeometryAnalysis:
         face_count=face_count,
         solid_count=solid_count,
         is_watertight=is_watertight,
+        wall_thickness_min_mm=wall_thickness_min,
+        complexity_score=complexity,
+        recommended_process=rec_process,
+        process_confidence=confidence,
     )
 
 

@@ -1,0 +1,423 @@
+# .agent/workflows/feature-sprint.yaml
+# Speedcut Platform — Automated Feature Sprint Pipeline
+# 
+# Pipeline: @architect → @engineer → @tester → @manager
+# Version: 1.0.0
+# Last updated: 2026-04-22
+
+name: feature-sprint
+description: >
+  Automates the full lifecycle of a feature sprint from architecture planning
+  through implementation, adversarial testing, and status management.
+  Enforces hard gates between each stage; no agent may proceed without
+  explicit sign-off from the upstream gate condition.
+
+version: "1.0.0"
+owner: "@manager"
+
+# ─────────────────────────────────────────────────────────────
+# GLOBAL PIPELINE CONFIGURATION
+# ─────────────────────────────────────────────────────────────
+config:
+  strict_mode: true                    # Abort on any gate failure
+  allow_parallel_epics: false          # One Epic in flight at a time (v1)
+  max_sprint_duration_days: 14
+  sha_verification: required           # Never mark complete without SHA
+  cross_brain_protocol: "global.md"    # Rules for Gemini↔Claude comms
+  audit_log: ".agent/logs/sprint-{sprint_id}.jsonl"
+  notification_channel: "slack:#speedcut-dev"
+
+# ─────────────────────────────────────────────────────────────
+# PIPELINE TRIGGER
+# ─────────────────────────────────────────────────────────────
+trigger:
+  # Manual: @manager invokes with explicit parameters
+  manual:
+    agent: "@manager"
+    required_params:
+      - epic_id        # e.g. EP-001
+      - sprint_id      # e.g. S01
+      - feature_name   # e.g. "STL Parser Fallback"
+      - task_ids       # e.g. ["1.8", "1.9", "1.10"]
+
+  # Automatic: triggered when @architect publishes a BRIEF.md
+  on_file_create:
+    pattern: "docs/plans/*/BRIEF.md"
+    agent_guard: "@architect"   # Only valid if authored by @architect
+
+# ─────────────────────────────────────────────────────────────
+# PIPELINE STAGES
+# ─────────────────────────────────────────────────────────────
+stages:
+
+  # ══════════════════════════════════════════════════════════
+  # STAGE 1: ARCHITECTURE PLANNING
+  # Agent: @architect (claude-opus-4-6)
+  # ══════════════════════════════════════════════════════════
+  - id: stage-1-planning
+    name: "Architecture Planning"
+    agent: "@architect"
+    model: "claude-opus-4-6"
+    timeout_hours: 8
+
+    inputs:
+      - source: "ROOT_PLAN.md"
+        required: true
+      - source: "docs/plans/EPIC-{epic_id}-*.md"
+        required: true
+      - source: "docs/adr/"
+        required: false
+
+    tasks:
+      - id: 1a
+        name: "Reasoning block — analyse feature scope"
+        instruction: >
+          Open a <thinking> block. Enumerate: (1) what the feature must do,
+          (2) all interfaces it touches, (3) risks, (4) dependencies on other Epics.
+          Close the thinking block before producing output.
+        required: true
+
+      - id: 1b
+        name: "Produce BRIEF.md"
+        instruction: >
+          Write docs/plans/EPIC-{epic_id}/BRIEF.md containing:
+          - Feature name and Epic reference
+          - Functional requirements (user story format)
+          - API contracts (request/response schemas)
+          - Database schema changes (if any)
+          - Acceptance criteria (measurable, testable)
+          - Definition of Done checklist
+          - Estimated complexity: XS | S | M | L | XL
+          - Known risks and mitigation
+        output_path: "docs/plans/EPIC-{epic_id}/BRIEF.md"
+        required: true
+
+      - id: 1c
+        name: "Create or update ADR if architectural decision required"
+        instruction: >
+          If the feature introduces a new technology, pattern, or architectural
+          boundary, write docs/adr/ADR-{next_id}-{slug}.md.
+        output_path: "docs/adr/"
+        required: false
+
+    gate:
+      name: "Manager BRIEF Approval"
+      condition: >
+        @manager reviews BRIEF.md for: Epic ID presence, clear DoD,
+        measurable acceptance criteria, complexity estimate.
+        BRIEF is REJECTED if any of these are missing.
+      approver: "@manager"
+      on_reject:
+        action: "return_to_stage_1"
+        notify: "@architect"
+        reason_required: true
+      on_approve:
+        action: "proceed_to_stage_2"
+        log: "BRIEF.md approved by @manager at {timestamp}"
+
+  # ══════════════════════════════════════════════════════════
+  # STAGE 2: IMPLEMENTATION
+  # Agent: @engineer (gemini-2.0-flash)
+  # ══════════════════════════════════════════════════════════
+  - id: stage-2-engineering
+    name: "Implementation"
+    agent: "@engineer"
+    model: "gemini-2.0-flash"
+    timeout_hours: 48
+    context_strategy: "full_codebase_load"  # Leverage 2M context window
+
+    inputs:
+      - source: "docs/plans/EPIC-{epic_id}/BRIEF.md"
+        required: true
+        gate_status: "APPROVED"
+      - source: "src/"
+        load_strategy: "full"     # Load entire src/ into 2M context
+        required: true
+      - source: "docs/plans/EPIC-{epic_id}-*.md"
+        required: true
+
+    tasks:
+      - id: 2a
+        name: "Read BRIEF.md in full before writing any code"
+        instruction: >
+          Parse BRIEF.md completely. Confirm understanding by echoing:
+          feature name, key API contracts, acceptance criteria count,
+          and DoD checklist items. DO NOT write code yet.
+        required: true
+
+      - id: 2b
+        name: "Mark tasks IN PROGRESS"
+        instruction: >
+          For each task_id in the sprint scope, call:
+          @skill:task-manager mark-in-progress --epic {epic_id} --task {task_id}
+        required: true
+
+      - id: 2c
+        name: "Implement feature according to BRIEF.md"
+        instruction: >
+          Write all application code. Follow these non-negotiable rules:
+          - TypeScript strict mode throughout
+          - No `any` types without explicit justification comment
+          - All async functions properly awaited
+          - No hardcoded secrets or env vars in source
+          - Commit after each discrete unit of work (not one giant commit)
+          - Commit message format: "feat(EP-{id}.{task}): {description}"
+        required: true
+
+      - id: 2d
+        name: "Update task statuses after each commit"
+        instruction: >
+          After each git commit, call:
+          @skill:task-manager mark-complete \
+            --epic {epic_id} \
+            --task {task_id} \
+            --sha $(git rev-parse --short HEAD) \
+            --agent @engineer
+        required: true
+
+      - id: 2e
+        name: "Write unit tests alongside code"
+        instruction: >
+          For each implemented function/module, write corresponding unit tests.
+          Minimum coverage target: 80% line coverage per new file.
+          Tests must pass locally before handoff.
+        required: true
+
+      - id: 2f
+        name: "Raise BLOCKER.md if blocked"
+        instruction: >
+          If implementation is blocked on missing spec, infrastructure,
+          or unclear requirement: create BLOCKER-{task_id}.md immediately.
+          Call: @skill:task-manager block-task and STOP. Do not workaround.
+        required: false   # Only if blocked
+
+    gate:
+      name: "Implementation Completeness Check"
+      condition: >
+        All task_ids in sprint scope are marked DONE with valid SHAs.
+        All unit tests pass (npm test / pytest). No BLOCKER files exist.
+        BRIEF.md DoD checklist is fully checked.
+      approver: "automated"   # Self-evaluating gate
+      on_fail:
+        action: "return_to_stage_2"
+        notify: "@engineer"
+      on_pass:
+        action: "proceed_to_stage_3"
+        log: "Implementation gate passed at {timestamp}"
+
+  # ══════════════════════════════════════════════════════════
+  # STAGE 3: ADVERSARIAL TESTING
+  # Agent: @tester (claude-sonnet-4-6)
+  # ══════════════════════════════════════════════════════════
+  - id: stage-3-testing
+    name: "Adversarial Testing"
+    agent: "@tester"
+    model: "claude-sonnet-4-6"
+    timeout_hours: 24
+
+    inputs:
+      - source: "docs/plans/EPIC-{epic_id}/BRIEF.md"
+        required: true
+      - source: "src/"
+        required: true
+        scope: "feature_files_only"   # Targeted read of changed files
+      - source: "tests/"
+        required: true
+      - source: "docs/plans/EPIC-{epic_id}-*.md"
+        required: true
+
+    tasks:
+      - id: 3a
+        name: "Attack surface enumeration"
+        instruction: >
+          Open a <thinking> block. Systematically enumerate every attack vector:
+          (1) null/undefined inputs, (2) auth boundary violations (can customerA 
+          access customerB data?), (3) SQL injection / XSS vectors, 
+          (4) race conditions (concurrent requests), (5) oversized payloads,
+          (6) malformed file uploads, (7) mobile viewport edge cases,
+          (8) timezone/locale edge cases. List all before writing any tests.
+        required: true
+
+      - id: 3b
+        name: "Write failing tests for each enumerated vector"
+        instruction: >
+          For each attack vector identified, write a test that FAILS against
+          a broken implementation. Confirm tests correctly catch the issue.
+          File: tests/EPIC-{epic_id}/adversarial-{task_id}.test.ts
+        required: true
+
+      - id: 3c
+        name: "Run the full test suite"
+        instruction: >
+          Execute: npm test -- --coverage
+          Record: pass rate, coverage %, any flaky tests.
+        required: true
+
+      - id: 3d
+        name: "Produce TEST_REPORT.md"
+        instruction: >
+          Write docs/plans/EPIC-{epic_id}/TEST_REPORT.md with:
+          - Executive summary (PASS / CONDITIONAL PASS / FAIL)
+          - Test suite results (total, passed, failed, skipped)
+          - Findings table: ID, description, severity (P0-P3), reproduction steps,
+            expected vs actual, affected task
+          - Coverage report
+          - Merge recommendation
+          
+          Severity definitions:
+            P0: Data loss, security breach, complete functional failure
+            P1: Major functional regression, wrong data returned
+            P2: Moderate issue, workaround exists
+            P3: Cosmetic, UX polish only
+        output_path: "docs/plans/EPIC-{epic_id}/TEST_REPORT.md"
+        required: true
+
+      - id: 3e
+        name: "Update task statuses to TESTED or BLOCKED"
+        instruction: >
+          For each task in scope:
+          - If all tests pass → status remains DONE (no change)
+          - If P0/P1 found → call: @skill:task-manager block-task
+            This sends the task back to @engineer for remediation.
+        required: true
+
+    gate:
+      name: "P0/P1 Clear Gate"
+      condition: >
+        TEST_REPORT.md exists. Zero P0 findings. Zero P1 findings.
+        Test coverage >= 70% on new code. No blocked tasks.
+      approver: "@manager"
+      on_fail:
+        action: "return_to_stage_2"
+        payload: "TEST_REPORT.md"
+        notify: "@engineer"
+        instruction: >
+          @engineer: Review TEST_REPORT.md findings. Remediate all P0/P1 issues.
+          After fixes, re-commit with format: "fix(EP-{id}.{task}): {description}"
+          Then @tester re-runs from stage-3-testing.
+      on_pass:
+        action: "proceed_to_stage_4"
+        log: "P0/P1 clear gate passed at {timestamp}"
+
+  # ══════════════════════════════════════════════════════════
+  # STAGE 4: STATUS MANAGEMENT & CLOSURE
+  # Agent: @manager (gemini-2.0-pro)
+  # ══════════════════════════════════════════════════════════
+  - id: stage-4-management
+    name: "Status Management & Sprint Closure"
+    agent: "@manager"
+    model: "gemini-2.0-pro"
+    timeout_hours: 4
+
+    inputs:
+      - source: "docs/plans/EPIC-{epic_id}/TEST_REPORT.md"
+        required: true
+        status_check: "PASS or CONDITIONAL PASS"
+      - source: "docs/plans/EPIC-{epic_id}-*.md"
+        required: true
+      - source: "ROOT_PLAN.md"
+        required: true
+      - source: "git log --oneline -20"
+        required: true   # Verify all SHAs before closure
+
+    tasks:
+      - id: 4a
+        name: "Verify all Git SHAs"
+        instruction: >
+          For every task in the sprint scope marked DONE, verify the recorded SHA
+          actually exists in git log. Reject any SHA that cannot be found.
+        required: true
+
+      - id: 4b
+        name: "Recalculate Epic progress"
+        instruction: >
+          Call: @skill:task-manager recalculate-progress --epic {epic_id}
+          Confirm ROOT_PLAN.md progress bar is updated.
+        required: true
+
+      - id: 4c
+        name: "Check for Epic completion"
+        instruction: >
+          If all tasks in the Epic are DONE (100%):
+          - Update Epic status in ROOT_PLAN.md: 🟡 IN PROGRESS → ✅ COMPLETE
+          - Update Epic Registry table status
+          - Create docs/sprints/SPRINT-{sprint_id}-retrospective.md
+        required: false   # Only if Epic is complete
+
+      - id: 4d
+        name: "Produce Sprint Status Report"
+        instruction: >
+          Call: @skill:task-manager generate-status-report --sprint {sprint_id}
+          Save to: docs/sprints/SPRINT-{sprint_id}-status.md
+        required: true
+
+      - id: 4e
+        name: "Approve merge to main"
+        instruction: >
+          If all verifications pass, provide explicit merge approval:
+          "MERGE APPROVED: Sprint {sprint_id} | Epic {epic_id} | {timestamp}"
+          Record approval in docs/sprints/SPRINT-{sprint_id}-status.md
+        required: true
+
+      - id: 4f
+        name: "Queue next sprint tasks"
+        instruction: >
+          Review ROOT_PLAN.md for next TODO tasks in the current Epic.
+          If Epic is complete, trigger @architect to draft the next Epic's sub-plan.
+          Update feature-sprint.yaml state for next invocation.
+        required: true
+
+    gate:
+      name: "Pipeline Complete"
+      condition: >
+        All SHAs verified. ROOT_PLAN.md updated. Merge explicitly approved.
+        Sprint status report written.
+      on_complete:
+        action: "archive_sprint"
+        log: "Sprint {sprint_id} closed at {timestamp} by @manager"
+        notify_channel: "slack:#speedcut-dev"
+        message: >
+          ✅ Sprint {sprint_id} complete | {tasks_done} tasks | Epic {epic_id} at {pct}%
+
+# ─────────────────────────────────────────────────────────────
+# PIPELINE ERROR HANDLING
+# ─────────────────────────────────────────────────────────────
+error_handling:
+  on_agent_timeout:
+    action: "pause_pipeline"
+    notify: "@manager"
+    message: "Pipeline paused: {agent} timed out on stage {stage_id}"
+
+  on_sha_validation_failure:
+    action: "abort_stage"
+    notify: "@manager"
+    message: "CRITICAL: SHA validation failed. Manual investigation required."
+
+  on_consecutive_gate_failures:
+    threshold: 3
+    action: "escalate_to_architect"
+    message: "@architect: Feature sprint has failed 3 gate cycles. Architectural review needed."
+
+  on_blocker_created:
+    action: "pause_pipeline_at_stage_2"
+    notify: "@manager"
+    timeout_hours: 24   # @architect must resolve within 24h
+
+# ─────────────────────────────────────────────────────────────
+# METRICS & OBSERVABILITY
+# ─────────────────────────────────────────────────────────────
+metrics:
+  track:
+    - stage_duration_hours
+    - gate_failure_count
+    - tasks_completed_per_sprint
+    - p0_p1_finding_rate
+    - sha_validation_pass_rate
+    - epic_completion_percentage
+  
+  output: ".agent/logs/metrics-{sprint_id}.json"
+  
+  thresholds:
+    gate_failure_count_warn: 2
+    p0_p1_finding_rate_warn: 0.10   # >10% = architecture review triggered
+    stage_2_duration_warn_hours: 36

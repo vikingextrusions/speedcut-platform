@@ -1,0 +1,262 @@
+# SKILL: task-manager
+**Version:** 1.0.0  
+**Usable by:** @engineer, @manager  
+**Invocation:** `@skill:task-manager <action> [args]`
+
+---
+
+## Purpose
+
+This skill teaches agents how to autonomously maintain plan integrity across the `docs/plans/` directory and `ROOT_PLAN.md`. It defines the exact protocol for updating task statuses, appending Git SHAs, and recalculating Epic completion percentages — ensuring all plan state is deterministic and auditable.
+
+---
+
+## Skill Actions
+
+### 1. `mark-complete`
+Mark a single task as complete in a sub-plan and append the Git SHA.
+
+**Trigger:** Called by @engineer immediately after a successful `git commit`.
+
+**Inputs:**
+```yaml
+action: mark-complete
+epic_id: "EP-001"           # e.g. EP-001
+task_number: "1.8"          # e.g. 1.8
+git_sha: "a1b2c3d"          # 7-char short SHA from git rev-parse --short HEAD
+agent: "@engineer"
+timestamp_iso: "2026-04-22T10:30:00Z"
+```
+
+**Step-by-step execution:**
+
+```
+STEP 1 — Locate the task row in docs/plans/EPIC-{id}-*.md
+  Find the markdown table row matching task_number
+  Verify current status is NOT already "✅ DONE"
+
+STEP 2 — Validate the Git SHA
+  Run: git log --oneline | grep {git_sha}
+  If SHA not found → ABORT and raise BLOCKER: "SHA {git_sha} not found in git log"
+  If SHA found → proceed
+
+STEP 3 — Update the task row
+  Replace: | {task_number} | {description} | 🔄 IN PROGRESS | — | {agent} |
+  With:    | {task_number} | {description} | ✅ DONE | `{git_sha}` | {agent} |
+
+STEP 4 — Trigger recalculate-progress (see action #3)
+  Call: @skill:task-manager recalculate-progress --epic {epic_id}
+
+STEP 5 — Log the update
+  Append to docs/plans/EPIC-{id}-changelog.md:
+  | {timestamp_iso} | {agent} | Task {task_number} marked DONE | SHA: {git_sha} |
+```
+
+**Output confirmation:**
+```
+✅ task-manager: Task EP-001.1.8 marked DONE (SHA: a1b2c3d)
+   Epic progress recalculated: 40% (8/20 tasks)
+   ROOT_PLAN.md progress bar updated.
+```
+
+---
+
+### 2. `mark-in-progress`
+Transition a task from `⬜ TODO` to `🔄 IN PROGRESS`.
+
+**Trigger:** Called by @engineer at the start of work on a task.
+
+**Inputs:**
+```yaml
+action: mark-in-progress
+epic_id: "EP-001"
+task_number: "1.9"
+agent: "@engineer"
+```
+
+**Execution:**
+```
+STEP 1 — Find the TODO task row in the sub-plan
+STEP 2 — Replace status: ⬜ TODO → 🔄 IN PROGRESS
+STEP 3 — Log change with ISO timestamp
+```
+
+---
+
+### 3. `recalculate-progress`
+Recalculate Epic completion percentage and update both the sub-plan header and `ROOT_PLAN.md` progress bar.
+
+**Trigger:** Automatically called after every `mark-complete`. Can also be called manually.
+
+**Algorithm:**
+```python
+def recalculate_progress(epic_id: str) -> float:
+    """
+    Parse the milestone table in docs/plans/EPIC-{id}-*.md
+    Count rows where status column contains "✅ DONE"
+    Count ALL rows in the milestone table (excluding header)
+    
+    completion_pct = (done_count / total_count) * 100
+    
+    # Update sub-plan header
+    Replace: "X of Y tasks complete" 
+    With:    "{done_count} of {total_count} tasks complete"
+    
+    # Update progress bar in sub-plan
+    filled_blocks = round(completion_pct / 5)  # 20-block bar
+    empty_blocks = 20 - filled_blocks
+    bar = "█" * filled_blocks + "░" * empty_blocks
+    Replace the progress bar line with: f"{bar}  {completion_pct:.1f}% Complete"
+    
+    # Update ROOT_PLAN.md
+    Find the Epic's progress bar line in ROOT_PLAN.md
+    Apply same bar formula
+    
+    # Update Epic Registry table in ROOT_PLAN.md
+    Update the "Progress" column for this Epic
+    
+    # Recalculate TOTAL platform progress
+    total_done = sum(done_count for all epics)
+    total_tasks = sum(total_count for all epics)
+    platform_pct = (total_done / total_tasks) * 100
+    Update TOTAL bar in ROOT_PLAN.md
+    
+    return completion_pct
+```
+
+**Progress Bar Format:**
+```
+# 20-block bar, each block = 5%
+100% = ████████████████████
+ 75% = ███████████████░░░░░
+ 35% = ███████░░░░░░░░░░░░░
+  0% = ░░░░░░░░░░░░░░░░░░░░
+```
+
+---
+
+### 4. `block-task`
+Mark a task as blocked with a reason, preventing downstream tasks from starting.
+
+**Trigger:** Called by any agent when they cannot proceed.
+
+**Inputs:**
+```yaml
+action: block-task
+epic_id: "EP-001"
+task_number: "1.9"
+reason: "S3 bucket permissions not configured"
+blocking_agent: "@engineer"
+requires_resolution_from: "@architect"
+```
+
+**Execution:**
+```
+STEP 1 — Update task status: ⬜ TODO → 🔴 BLOCKED
+STEP 2 — Create docs/plans/EPIC-{id}/BLOCKER-{task_number}.md with:
+  - Reason
+  - Blocking agent
+  - Resolution owner
+  - Timestamp
+  - Suggested resolution (if known)
+STEP 3 — Notify @manager via status update
+STEP 4 — DO NOT proceed to downstream tasks
+```
+
+---
+
+### 5. `generate-status-report`
+Produce a point-in-time status report for the current sprint.
+
+**Trigger:** Called by @manager at the end of each sprint day or on demand.
+
+**Output format:**
+```markdown
+# Sprint Status Report — {sprint_id}
+**Generated:** {timestamp_iso}
+**Generated by:** @manager
+
+## Epic Progress
+| Epic | Done | Total | % | Status |
+|------|------|-------|---|--------|
+| EP-001 | 8 | 20 | 40.0% | 🟡 IN PROGRESS |
+...
+
+## Blockers
+| Epic | Task | Reason | Owner |
+|...  |
+
+## SHAs Verified This Sprint
+| Task | SHA | Verified |
+|...  |
+
+## Next Actions
+1. @engineer: Resume EP-001.1.9 — File upload API
+2. @architect: Draft EP-002 sub-plan before 2026-05-07
+```
+
+---
+
+## Validation Rules
+
+The `task-manager` skill enforces these invariants on every operation:
+
+| Rule | Description | Failure Action |
+|---|---|---|
+| **SHA_REQUIRED** | No task marked DONE without a valid 7-char Git SHA | ABORT with error |
+| **NO_SKIP** | Tasks must go TODO → IN_PROGRESS → DONE in order | WARN if skipped |
+| **EPIC_ID_MATCH** | SHA must reference a commit message containing the Epic ID | WARN if missing |
+| **ROOT_SYNC** | ROOT_PLAN.md must be updated within same operation as sub-plan | ABORT if ROOT stale |
+| **MANAGER_GATED** | Epic status transitions (e.g. PLANNED→IN PROGRESS) require @manager | ABORT if wrong agent |
+| **NO_RETROGRADE** | Cannot move a ✅ DONE task back to IN_PROGRESS without @manager approval | ABORT |
+
+---
+
+## Quick Reference Card
+
+```bash
+# Mark a task complete (called by @engineer after git commit)
+@skill:task-manager mark-complete \
+  --epic EP-001 \
+  --task 1.8 \
+  --sha $(git rev-parse --short HEAD) \
+  --agent @engineer
+
+# Start working on a task
+@skill:task-manager mark-in-progress --epic EP-001 --task 1.9 --agent @engineer
+
+# Manually sync progress bars (called by @manager)
+@skill:task-manager recalculate-progress --epic EP-001
+
+# Block a task
+@skill:task-manager block-task \
+  --epic EP-001 \
+  --task 1.9 \
+  --reason "S3 bucket not accessible" \
+  --resolve-with @architect
+
+# Full sprint status report
+@skill:task-manager generate-status-report --sprint S01
+```
+
+---
+
+## Integration with Git Hooks
+
+Install the post-commit hook to auto-trigger `mark-complete`:
+
+```bash
+# .git/hooks/post-commit
+#!/bin/sh
+# Extract Epic ID from commit message (e.g. "feat(EP-001.1.8): ...")
+EPIC=$(git log -1 --pretty=%s | grep -oP 'EP-\d+')
+TASK=$(git log -1 --pretty=%s | grep -oP 'EP-\d+\.\d+' | grep -oP '\d+\.\d+')
+SHA=$(git rev-parse --short HEAD)
+
+if [ -n "$EPIC" ] && [ -n "$TASK" ]; then
+  echo "🤖 task-manager: Auto-updating $EPIC task $TASK (SHA: $SHA)"
+  # Agent picks this up on next context load
+  echo "{\"action\":\"mark-complete\",\"epic_id\":\"$EPIC\",\"task_number\":\"$TASK\",\"git_sha\":\"$SHA\"}" \
+    >> .agent/queue/task-updates.jsonl
+fi
+```

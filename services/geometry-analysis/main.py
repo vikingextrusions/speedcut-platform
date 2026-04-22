@@ -127,6 +127,9 @@ def recommend_process(bb_dims: list[float], mrr: float, is_watertight: bool, fac
     Heuristic process recommendation based on geometry characteristics.
     Returns (process_name, confidence_score).
     """
+    if face_count == 0 or sum(bb_dims) == 0:
+        return "UNKNOWN", 0.0
+        
     score_cnc = 0.0
     score_sheet = 0.0
     score_3dp = 0.0
@@ -168,14 +171,17 @@ def analyse_mesh_file(file_path: str, ext: str) -> GeometryAnalysis:
     mesh = trimesh.load(file_path, force='mesh')
     
     try:
-        volume = float(mesh.volume) if hasattr(mesh, 'volume') and mesh.is_volume else float(mesh.convex_hull.volume)
+        volume = abs(float(mesh.volume)) if hasattr(mesh, 'volume') and mesh.is_volume else abs(float(mesh.convex_hull.volume))
     except Exception:
         volume = 0.0
         
     surface_area = float(mesh.area)
     
-    extents = mesh.extents
-    bb_x, bb_y, bb_z = float(extents[0]), float(extents[1]), float(extents[2])
+    try:
+        extents = mesh.extents
+        bb_x, bb_y, bb_z = float(extents[0]), float(extents[1]), float(extents[2])
+    except Exception:
+        bb_x, bb_y, bb_z = 0.0, 0.0, 0.0
     stock_volume = bb_x * bb_y * bb_z
     
     removal_ratio = 0.0
@@ -291,17 +297,23 @@ def analyse_step_file(file_path: str) -> GeometryAnalysis:
     )
 
 
-# ─── Endpoints ───
+import concurrent.futures
+
+def run_analysis_sync(tmp_path: str, ext: str) -> GeometryAnalysis:
+    if ext in (".stl", ".obj"):
+        return analyse_mesh_file(tmp_path, ext)
+    else:
+        return analyse_step_file(tmp_path)
+
 
 def run_analysis_task(job_id: str, tmp_path: str, ext: str, original_filename: str):
     start_time = time.time()
     try:
         redis_client.hset(f"job:{job_id}", mapping={"status": "processing"})
         
-        if ext in (".stl", ".obj"):
-            analysis = analyse_mesh_file(tmp_path, ext)
-        else:
-            analysis = analyse_step_file(tmp_path)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_analysis_sync, tmp_path, ext)
+            analysis = future.result(timeout=120)
             
         processing_time = (time.time() - start_time) * 1000
         
@@ -313,6 +325,12 @@ def run_analysis_task(job_id: str, tmp_path: str, ext: str, original_filename: s
         }
         redis_client.hset(f"job:{job_id}", mapping=redis_payload)
         
+    except concurrent.futures.TimeoutError:
+        redis_client.hset(f"job:{job_id}", mapping={
+            "status": "failed",
+            "error": "Analysis timed out after 120 seconds. Model may be too complex.",
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        })
     except Exception as e:
         redis_client.hset(f"job:{job_id}", mapping={
             "status": "failed",
@@ -348,11 +366,18 @@ async def queue_analysis(background_tasks: BackgroundTasks, file: UploadFile = F
     
     job_id = str(uuid.uuid4())
     
+    MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+    
     try:
+        content = await file.read(MAX_UPLOAD_BYTES + 1)
+        if len(content) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large (exceeds 50MB).")
+            
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-            content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
@@ -365,12 +390,12 @@ async def queue_analysis(background_tasks: BackgroundTasks, file: UploadFile = F
             "filename": filename
         })
         redis_client.expire(f"job:{job_id}", 86400)
-    except redis.exceptions.ConnectionError:
+    except redis.exceptions.RedisError as e:
         try:
             os.unlink(tmp_path)
         except Exception:
             pass
-        raise HTTPException(status_code=503, detail="Redis connection failed. Async processing unavailable.")
+        raise HTTPException(status_code=503, detail=f"Redis error: {str(e)}")
         
     background_tasks.add_task(run_analysis_task, job_id, tmp_path, ext, filename)
     
@@ -389,8 +414,8 @@ async def get_analysis_status(job_id: str):
     """
     try:
         job_data = redis_client.hgetall(f"job:{job_id}")
-    except redis.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Redis connection failed.")
+    except redis.exceptions.RedisError as e:
+        raise HTTPException(status_code=503, detail=f"Redis error: {str(e)}")
         
     if not job_data:
         raise HTTPException(status_code=404, detail="Job not found")

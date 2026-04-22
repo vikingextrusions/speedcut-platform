@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Send, Plus, Cpu, Printer, Layers, Package, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Send, Plus, Cpu, Printer, Layers, Package, Loader2, CheckCircle2, ArrowRight } from 'lucide-react'
 import {
   QuoteLineItem,
   createEmptyPart,
@@ -12,10 +13,12 @@ import type { QuotePartData, ServiceType } from '@speedcut/ui/quote-line-item'
 import { submitQuoteRequest } from './actions'
 
 export default function NewQuotePage() {
+  const router = useRouter()
   const [parts, setParts] = useState<QuotePartData[]>([])
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successQuoteId, setSuccessQuoteId] = useState<string | null>(null)
 
   const addPart = (service: ServiceType) => {
     setParts([...parts, createEmptyPart(service)])
@@ -44,13 +47,108 @@ export default function NewQuotePage() {
     // Serialize parts data into the form
     formData.set('parts_data', JSON.stringify(parts))
     try {
-      await submitQuoteRequest(formData)
+      const result = await submitQuoteRequest(formData)
+      // Show success state before navigating
+      setSuccessQuoteId(result.quoteId)
     } catch (err: any) {
       setError(err?.message || 'Failed to submit quote')
       setSubmitting(false)
     }
   }
 
+  // ── Success screen ──────────────────────────────────────────────────────────
+  if (successQuoteId) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          gap: '1.5rem',
+          animation: 'fade-in 0.4s ease-out',
+          textAlign: 'center',
+        }}
+      >
+        {/* Animated tick circle */}
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: '50%',
+            backgroundColor: 'rgba(34, 197, 94, 0.12)',
+            border: '2px solid rgba(34, 197, 94, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }}
+        >
+          <CheckCircle2 size={36} color="#22c55e" />
+        </div>
+
+        <div>
+          <h1 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+            Quote Request Submitted!
+          </h1>
+          <p style={{ color: 'var(--text-muted)', maxWidth: 420, lineHeight: 1.6 }}>
+            Your request has been received. Our team will review your parts and
+            get back to you with pricing as soon as possible.
+          </p>
+        </div>
+
+        {/* Info banner */}
+        <div
+          style={{
+            padding: '1rem 1.5rem',
+            borderRadius: '0.75rem',
+            backgroundColor: 'var(--glass-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)',
+            maxWidth: 420,
+            width: '100%',
+          }}
+        >
+          <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            You'll receive a notification when your quote is ready. You can track
+            the progress from your Quotes dashboard at any time.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            onClick={() => router.push(`/quotes/${successQuoteId}`)}
+            className="btn-primary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.625rem 1.5rem',
+            }}
+          >
+            View Quote <ArrowRight size={16} />
+          </button>
+          <Link
+            href="/quotes"
+            className="btn-secondary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.625rem 1.5rem',
+              textDecoration: 'none',
+            }}
+          >
+            Back to Quotes
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Form ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
       {/* Back link */}

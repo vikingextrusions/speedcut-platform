@@ -1,9 +1,8 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
 
-export async function submitQuoteRequest(formData: FormData) {
+export async function submitQuoteRequest(formData: FormData): Promise<{ quoteId: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -39,18 +38,10 @@ export async function submitQuoteRequest(formData: FormData) {
     throw new Error('At least one part is required')
   }
 
-  // Generate quote number
-  const { count } = await supabase
-    .from('quotes')
-    .select('*', { count: 'exact', head: true })
-
-  const quoteNumber = `QR-${String((count || 0) + 1).padStart(5, '0')}`
-
-  // Insert quote
+  // Insert quote — let the DB sequence assign quote_number automatically
   const { data: quote, error: quoteError } = await supabase
     .from('quotes')
     .insert({
-      quote_number: quoteNumber,
       customer_org_id: orgMember.organization_id,
       contact_id: user.id,
       status: 'submitted',
@@ -99,5 +90,9 @@ export async function submitQuoteRequest(formData: FormData) {
     }
   }
 
-  redirect(`/quotes/${quote.id}`)
+  // Return the quote ID — let the client handle navigation.
+  // DO NOT call redirect() here: it throws a special NEXT_REDIRECT error that
+  // gets caught by the client's try/catch, producing the cryptic
+  // "Server Components render" production error.
+  return { quoteId: quote.id }
 }

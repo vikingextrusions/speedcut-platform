@@ -23,7 +23,7 @@ def test_health():
 
 
 def test_analyse(file_path: str):
-    """Upload a STEP file and display the analysis."""
+    """Upload a CAD file and display the analysis."""
     print(f"\nAnalysing: {file_path}")
     print("─" * 50)
     
@@ -87,8 +87,8 @@ if __name__ == "__main__":
         sys.exit(1)
     
     if len(sys.argv) < 2:
-        print("\nUsage: python test_analyse.py <path-to-step-file>")
-        print("\nNo STEP file provided. You can test with any .step or .stp file.")
+        print("\nUsage: python test_analyse.py <path-to-cad-file>")
+        print("\nNo CAD file provided. You can test with .step, .stp, .stl, or .obj files.")
         sys.exit(0)
     
     test_analyse(sys.argv[1])

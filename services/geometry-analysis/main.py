@@ -140,6 +140,64 @@ def recommend_process(bb_dims: list[float], mrr: float, is_watertight: bool, fac
     return best, round(confidence, 3)
 
 
+def analyse_mesh_file(file_path: str, ext: str) -> GeometryAnalysis:
+    """
+    Parse an STL or OBJ mesh file using trimesh as a fallback to CadQuery's STEP parser.
+    Extracts volume, surface area, and bounding box.
+    """
+    try:
+        import trimesh
+    except ImportError:
+        raise HTTPException(status_code=500, detail="trimesh library not installed for mesh parsing.")
+        
+    mesh = trimesh.load(file_path, force='mesh')
+    
+    try:
+        volume = float(mesh.volume) if hasattr(mesh, 'volume') and mesh.is_volume else float(mesh.convex_hull.volume)
+    except Exception:
+        volume = 0.0
+        
+    surface_area = float(mesh.area)
+    
+    extents = mesh.extents
+    bb_x, bb_y, bb_z = float(extents[0]), float(extents[1]), float(extents[2])
+    stock_volume = bb_x * bb_y * bb_z
+    
+    removal_ratio = 0.0
+    if stock_volume > 0:
+        removal_ratio = 1.0 - (volume / stock_volume)
+        
+    face_count = len(mesh.faces)
+    solid_count = 1
+    is_watertight = bool(mesh.is_watertight)
+    
+    wall_thickness_min = None
+    if surface_area > 0:
+        wall_thickness_min = round(volume / (surface_area * 0.5), 2)
+        
+    complexity = calculate_complexity(face_count, surface_area, volume, removal_ratio)
+    rec_process, confidence = recommend_process([bb_x, bb_y, bb_z], removal_ratio, is_watertight, face_count)
+    
+    return GeometryAnalysis(
+        volume_mm3=round(volume, 2),
+        surface_area_mm2=round(surface_area, 2),
+        bounding_box=BoundingBox(
+            x_mm=round(bb_x, 2),
+            y_mm=round(bb_y, 2),
+            z_mm=round(bb_z, 2),
+        ),
+        stock_volume_mm3=round(stock_volume, 2),
+        material_removal_ratio=round(removal_ratio, 4),
+        face_count=face_count,
+        solid_count=solid_count,
+        is_watertight=is_watertight,
+        wall_thickness_min_mm=wall_thickness_min,
+        complexity_score=complexity,
+        recommended_process=rec_process,
+        process_confidence=confidence,
+    )
+
+
 def analyse_step_file(file_path: str) -> GeometryAnalysis:
     """
     Parse a STEP file and extract manufacturing-relevant geometry metrics.
@@ -238,10 +296,10 @@ async def analyse(file: UploadFile = File(...)):
     filename = file.filename or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     
-    if ext not in (".step", ".stp"):
+    if ext not in (".step", ".stp", ".stl", ".obj"):
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {ext}. Only .step and .stp files are supported.",
+            detail=f"Unsupported file type: {ext}. Supported formats: .step, .stp, .stl, .obj.",
         )
     
     start_time = time.time()
@@ -254,7 +312,10 @@ async def analyse(file: UploadFile = File(...)):
             tmp_path = tmp.name
         
         # Run the analysis
-        analysis = analyse_step_file(tmp_path)
+        if ext in (".stl", ".obj"):
+            analysis = analyse_mesh_file(tmp_path, ext)
+        else:
+            analysis = analyse_step_file(tmp_path)
         
         processing_time = (time.time() - start_time) * 1000
         

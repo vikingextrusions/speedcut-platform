@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Send, Plus, Cpu, Printer, Layers, Package, Loader2, CheckCircle2, ArrowRight } from 'lucide-react'
@@ -19,6 +19,12 @@ export default function NewQuotePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successQuoteId, setSuccessQuoteId] = useState<string | null>(null)
+
+  // Refs to read form field values without relying on FormData
+  const projectNameRef = useRef<HTMLInputElement>(null)
+  const customerReferenceRef = useRef<HTMLInputElement>(null)
+  const leadTimeRef = useRef<HTMLSelectElement>(null)
+  const notesRef = useRef<HTMLTextAreaElement>(null)
 
   const addPart = (service: ServiceType) => {
     setParts([...parts, createEmptyPart(service)])
@@ -41,14 +47,41 @@ export default function NewQuotePage() {
 
   const hasParts = parts.length > 0
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError(null)
+
+    if (parts.length === 0) {
+      setError('Please add at least one part before submitting.')
+      return
+    }
+
     setSubmitting(true)
-    // Serialize parts data into the form
-    formData.set('parts_data', JSON.stringify(parts))
     try {
-      const result = await submitQuoteRequest(formData)
-      // Show success state before navigating
+      const result = await submitQuoteRequest({
+        projectName: projectNameRef.current?.value || '',
+        customerReference: customerReferenceRef.current?.value || '',
+        leadTime: leadTimeRef.current?.value || 'standard',
+        notes: notesRef.current?.value || '',
+        parts: parts.map(p => ({
+          name: p.description,
+          service: p.service,
+          material: p.service === 'cnc'
+            ? p.cncMaterial
+            : p.service === '3d-printing'
+              ? p.printMaterial
+              : p.sheetMaterial,
+          materialType: p.service === '3d-printing' ? p.printTechnology : undefined,
+          quantity: p.quantity,
+          finish: p.service === 'cnc'
+            ? p.cncFinish
+            : p.service === '3d-printing'
+              ? p.printPurpose
+              : p.sheetFinish,
+          tolerance: p.service === 'cnc' ? p.cncTolerance : undefined,
+          notes: p.notes,
+        })),
+      })
       setSuccessQuoteId(result.quoteId)
     } catch (err: any) {
       setError(err?.message || 'Failed to submit quote')
@@ -221,22 +254,22 @@ export default function NewQuotePage() {
         </div>
       )}
 
-      <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px' }}>
         {/* Project Details */}
         <div className="card">
           <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Project Details</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label htmlFor="project_name" className="label">Project Name</label>
-              <input id="project_name" name="project_name" className="input-field" placeholder="e.g. Assembly V2 Prototype" />
+              <input ref={projectNameRef} id="project_name" name="project_name" className="input-field" placeholder="e.g. Assembly V2 Prototype" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label htmlFor="customer_reference" className="label">Your Reference</label>
-              <input id="customer_reference" name="customer_reference" className="input-field" placeholder="e.g. PO-12345" />
+              <input ref={customerReferenceRef} id="customer_reference" name="customer_reference" className="input-field" placeholder="e.g. PO-12345" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label htmlFor="lead_time" className="label">Lead Time</label>
-              <select id="lead_time" name="lead_time" className="input-field">
+              <select ref={leadTimeRef} id="lead_time" name="lead_time" className="input-field">
                 <option value="standard">Standard (10-15 days)</option>
                 <option value="express">Express (5-7 days)</option>
                 <option value="rush">Rush (3-5 days)</option>
@@ -425,6 +458,7 @@ export default function NewQuotePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label htmlFor="notes" className="label">Notes / Special Requirements</label>
               <textarea
+                ref={notesRef}
                 id="notes"
                 name="notes"
                 className="input-field"

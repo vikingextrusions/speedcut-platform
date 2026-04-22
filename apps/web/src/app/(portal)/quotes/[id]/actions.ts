@@ -91,9 +91,7 @@ export async function respondToQuote(
       material_type: item.material_type,
       quantity: item.quantity,
       unit_price: item.unit_price,
-      total_price: item.total_price ?? Number(item.unit_price) * item.quantity,
-      lead_time: item.lead_time,
-      line_status: 'outstanding',
+      line_status: 'outstanding' as any,
       sort_order: idx,
     }))
 

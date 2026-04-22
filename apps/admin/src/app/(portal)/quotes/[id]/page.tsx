@@ -5,6 +5,7 @@ import { StatusBadge } from '@speedcut/ui/status-badge'
 import { PageHeader } from '@speedcut/ui/page-header'
 import { DetailLayout } from '@speedcut/ui/detail-layout'
 import { QuoteStatusActions } from './quote-actions'
+import { AssignPartnerPanel } from './assign-partner'
 
 export default async function AdminQuoteDetailPage({
   params,
@@ -14,25 +15,34 @@ export default async function AdminQuoteDetailPage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: quote } = await supabase
-    .from('quotes')
-    .select(`
-      id, quote_number, status, subtotal, vat_amount, total_amount, quote_date, valid_until,
-      customer_reference, material_type, notes, internal_notes, vat_rate, created_at,
-      organizations!quotes_customer_org_id_fkey(id, name),
-      profiles!quotes_contact_id_fkey(id, full_name, email, phone),
-      quote_items(id, description, material, material_type, quantity, unit_price, total_price, lead_time, sort_order),
-      quote_assignments(id, status, partner_price, notes, responded_at, created_at,
-        organizations!quote_assignments_partner_org_id_fkey(name)
-      )
-    `)
-    .eq('id', id)
-    .single()
+  const [{ data: quote }, { data: partnerOrgs }] = await Promise.all([
+    supabase
+      .from('quotes')
+      .select(`
+        id, quote_number, status, subtotal, vat_amount, total_amount, quote_date, valid_until,
+        customer_reference, material_type, notes, internal_notes, vat_rate, created_at,
+        organizations!quotes_customer_org_id_fkey(id, name),
+        profiles!quotes_contact_id_fkey(id, full_name, email, phone),
+        quote_items(id, description, material, material_type, quantity, unit_price, total_price, lead_time, sort_order),
+        quote_assignments(id, status, partner_price, notes, responded_at, created_at,
+          organizations!quote_assignments_partner_org_id_fkey(name)
+        )
+      `)
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('type', 'partner')
+      .eq('status', 'active')
+      .order('name'),
+  ])
 
   if (!quote) notFound()
 
   const items = (quote.quote_items as any[])?.sort((a: any, b: any) => a.sort_order - b.sort_order) || []
   const assignments = (quote.quote_assignments as any[]) || []
+  const partners = (partnerOrgs || []) as { id: string; name: string }[]
 
   return (
     <div style={{ animation: 'fade-in 0.3s ease-out' }}>
@@ -77,23 +87,12 @@ export default async function AdminQuoteDetailPage({
               </div>
             </div>
 
-            {/* Partner Assignments */}
-            {assignments.length > 0 && (
-              <div className="card">
-                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Partner Assignments</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {assignments.map((a: any) => (
-                    <div key={a.id} style={{ padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: 'var(--bg-primary)', fontSize: '0.85rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                        <span style={{ fontWeight: 600 }}>{a.organizations?.name || '—'}</span>
-                        <StatusBadge status={a.status} />
-                      </div>
-                      {a.partner_price && <span style={{ color: 'var(--text-muted)' }}>Price: £{Number(a.partner_price).toFixed(2)}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Partner Assignment */}
+            <AssignPartnerPanel
+              quoteId={quote.id}
+              partners={partners}
+              assignments={assignments}
+            />
           </>
         }
       >

@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { ReorderButton } from './reorder-button'
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -47,9 +48,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
           {order.customer_reference && <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>Ref: {order.customer_reference}</p>}
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
           <p style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.025em' }}>£{order.total_amount.toFixed(2)}</p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Inc. VAT</p>
+          <ReorderButton orderId={order.id} />
         </div>
       </div>
 

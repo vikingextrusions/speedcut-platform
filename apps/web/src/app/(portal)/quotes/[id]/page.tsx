@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Clock, FileText } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
+import { QuoteResponseActions } from './quote-response'
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -68,48 +69,91 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
         <InfoCard label="VAT (${quote.vat_rate}%)" value={`£${quote.vat_amount.toFixed(2)}`} />
       </div>
 
-      {/* Line Items */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ fontWeight: 700, fontSize: '1rem' }}>Line Items</h2>
+      {/* ── Quote response actions (only when sent) ── */}
+      {quote.status === 'sent' && (
+        <QuoteResponseActions quoteId={quote.id} items={items} />
+      )}
+
+      {/* ── Accepted banner ── */}
+      {quote.status === 'accepted' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          padding: '1rem 1.25rem', borderRadius: '0.75rem', marginBottom: '2rem',
+          backgroundColor: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+        }}>
+          <CheckCircle2 size={20} color="#10b981" style={{ flexShrink: 0 }} />
+          <div>
+            <p style={{ fontWeight: 700, color: '#10b981', fontSize: '0.9rem' }}>Quote Accepted</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+              Your order is being processed. You'll receive an update when production begins.
+            </p>
+          </div>
         </div>
-        {items.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={thStyle}>#</th>
-                  <th style={thStyle}>Description</th>
-                  <th style={thStyle}>Material</th>
-                  <th style={thStyle}>Process</th>
-                  <th style={thStyle}>Qty</th>
-                  <th style={thStyle}>Unit Price</th>
-                  <th style={thStyle}>Total</th>
-                  <th style={thStyle}>Lead Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item: any, idx: number) => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={tdStyle}>{idx + 1}</td>
-                    <td style={{ ...tdStyle, maxWidth: '300px' }}>{item.description}</td>
-                    <td style={tdStyle}>{item.material || '—'}</td>
-                    <td style={tdStyle}>{item.manufacturing_processes?.name || '—'}</td>
-                    <td style={tdStyle}>{item.quantity}</td>
-                    <td style={tdStyle}>£{item.unit_price.toFixed(2)}</td>
-                    <td style={{ ...tdStyle, fontWeight: 700 }}>£{(item.total_price || item.unit_price * item.quantity).toFixed(2)}</td>
-                    <td style={tdStyle}>{item.lead_time || '—'}</td>
+      )}
+
+      {/* ── Rejected banner ── */}
+      {quote.status === 'rejected' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          padding: '1rem 1.25rem', borderRadius: '0.75rem', marginBottom: '2rem',
+          backgroundColor: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+        }}>
+          <XCircle size={20} color="#ef4444" style={{ flexShrink: 0 }} />
+          <div>
+            <p style={{ fontWeight: 700, color: '#ef4444', fontSize: '0.9rem' }}>Quote Declined</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.15rem' }}>
+              You've declined this quote. Submit a new request if you'd like to try again.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Line Items — shown as static table for non-sent quotes */}
+      {quote.status !== 'sent' && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+            <h2 style={{ fontWeight: 700, fontSize: '1rem' }}>Line Items</h2>
+          </div>
+          {items.length > 0 ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    <th style={thStyle}>#</th>
+                    <th style={thStyle}>Description</th>
+                    <th style={thStyle}>Material</th>
+                    <th style={thStyle}>Process</th>
+                    <th style={thStyle}>Qty</th>
+                    <th style={thStyle}>Unit Price</th>
+                    <th style={thStyle}>Total</th>
+                    <th style={thStyle}>Lead Time</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No line items
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {items.map((item: any, idx: number) => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={tdStyle}>{idx + 1}</td>
+                      <td style={{ ...tdStyle, maxWidth: '300px' }}>{item.description}</td>
+                      <td style={tdStyle}>{item.material || '—'}</td>
+                      <td style={tdStyle}>{item.manufacturing_processes?.name || '—'}</td>
+                      <td style={tdStyle}>{item.quantity}</td>
+                      <td style={tdStyle}>£{item.unit_price.toFixed(2)}</td>
+                      <td style={{ ...tdStyle, fontWeight: 700 }}>£{(item.total_price || item.unit_price * item.quantity).toFixed(2)}</td>
+                      <td style={tdStyle}>{item.lead_time || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No line items
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes */}
       {quote.notes && (

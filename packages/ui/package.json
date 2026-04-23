@@ -18,18 +18,27 @@
     "./empty-state": "./src/empty-state.tsx",
     "./page-header": "./src/page-header.tsx",
     "./data-table": "./src/data-table.tsx",
-    "./detail-layout": "./src/detail-layout.tsx"
+    "./detail-layout": "./src/detail-layout.tsx",
+    "./file-dropzone": "./src/file-dropzone.tsx",
+    "./geometry-card": "./src/geometry-card.tsx",
+    "./model-viewer": "./src/model-viewer.tsx",
+    "./hero-dropzone": "./src/hero-dropzone.tsx",
+    "./part-card": "./src/part-card.tsx"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
+    "@types/three": "^0.184.0",
     "lucide-react": "^0.577.0",
-    "next-themes": "^0.4.6"
+    "next-themes": "^0.4.6",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "react": "^19",

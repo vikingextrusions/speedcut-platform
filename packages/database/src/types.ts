@@ -1270,10 +1270,98 @@ export type Database = {
           },
         ]
       }
+      geometry_results: {
+        Row: {
+          bounding_box_x_mm: number | null
+          bounding_box_y_mm: number | null
+          bounding_box_z_mm: number | null
+          completed_at: string | null
+          complexity_score: number | null
+          created_at: string | null
+          error_message: string | null
+          face_count: number | null
+          file_hash: string | null
+          file_id: string
+          id: string
+          is_watertight: boolean | null
+          job_id: string
+          material_removal_ratio: number | null
+          process_confidence: number | null
+          processing_time_ms: number | null
+          recommended_process: string | null
+          solid_count: number | null
+          status: string
+          stock_volume_mm3: number | null
+          surface_area_mm2: number | null
+          volume_mm3: number | null
+          wall_thickness_min_mm: number | null
+        }
+        Insert: {
+          bounding_box_x_mm?: number | null
+          bounding_box_y_mm?: number | null
+          bounding_box_z_mm?: number | null
+          completed_at?: string | null
+          complexity_score?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          face_count?: number | null
+          file_hash?: string | null
+          file_id: string
+          id?: string
+          is_watertight?: boolean | null
+          job_id: string
+          material_removal_ratio?: number | null
+          process_confidence?: number | null
+          processing_time_ms?: number | null
+          recommended_process?: string | null
+          solid_count?: number | null
+          status?: string
+          stock_volume_mm3?: number | null
+          surface_area_mm2?: number | null
+          volume_mm3?: number | null
+          wall_thickness_min_mm?: number | null
+        }
+        Update: {
+          bounding_box_x_mm?: number | null
+          bounding_box_y_mm?: number | null
+          bounding_box_z_mm?: number | null
+          completed_at?: string | null
+          complexity_score?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          face_count?: number | null
+          file_hash?: string | null
+          file_id?: string
+          id?: string
+          is_watertight?: boolean | null
+          job_id?: string
+          material_removal_ratio?: number | null
+          process_confidence?: number | null
+          processing_time_ms?: number | null
+          recommended_process?: string | null
+          solid_count?: number | null
+          status?: string
+          stock_volume_mm3?: number | null
+          surface_area_mm2?: number | null
+          volume_mm3?: number | null
+          wall_thickness_min_mm?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geometry_results_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           created_at: string
           description: string
+          file_id: string | null
+          geometry_result_id: string | null
           id: string
           lead_time: string | null
           material: string | null
@@ -1289,6 +1377,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          file_id?: string | null
+          geometry_result_id?: string | null
           id?: string
           lead_time?: string | null
           material?: string | null
@@ -1304,6 +1394,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          file_id?: string | null
+          geometry_result_id?: string | null
           id?: string
           lead_time?: string | null
           material?: string | null
@@ -1317,6 +1409,20 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_items_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_geometry_result_id_fkey"
+            columns: ["geometry_result_id"]
+            isOneToOne: false
+            referencedRelation: "geometry_results"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_items_process_id_fkey"
             columns: ["process_id"]

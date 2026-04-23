@@ -11,6 +11,10 @@ export interface PartInput {
   finish?: string
   tolerance?: string
   notes?: string
+  fileId?: string
+  geometryResultId?: string
+  leadTime?: string
+  fileName?: string
 }
 
 export interface QuoteInput {
@@ -81,6 +85,8 @@ export async function submitQuoteRequest(input: QuoteInput): Promise<{ quoteId: 
     total_price: 0,
     lead_time: part.leadTime || input.leadTime || null,
     sort_order: idx,
+    file_id: part.fileId || null,
+    geometry_result_id: part.geometryResultId || null,
     specifications: JSON.stringify({
       service: part.service,
       finish: part.finish,

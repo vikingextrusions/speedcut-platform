@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronDown, ChevronRight, Trash2, Upload, Cpu, Printer, Layers, GripVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Trash2, Cpu, Printer, Layers, GripVertical } from 'lucide-react'
+import { FileDropzone, type FileUploadResult, type GeometryResult } from './file-dropzone'
+import { GeometryCard, GeometryCardSkeleton } from './geometry-card'
 
 /* ─── Types ─── */
 
@@ -28,6 +30,10 @@ export interface QuotePartData {
   // Common
   notes: string
   files: File[]
+  // Geometry analysis
+  fileId?: string
+  geometryResultId?: string
+  geometryResult?: GeometryResult
 }
 
 export function createEmptyPart(service: ServiceType = 'cnc'): QuotePartData {
@@ -125,13 +131,7 @@ const sheetFinishes = [
   'Anodised', 'Brushed / Linished', 'Polished', 'Painted', 'Passivated',
 ]
 
-/* ─── File type hints per service ─── */
 
-const fileHints: Record<ServiceType, string> = {
-  'cnc': 'STEP, IGES, DXF, DWG, PDF — up to 50MB',
-  '3d-printing': 'STL, OBJ, 3MF, STEP — up to 50MB',
-  'sheet-metal': 'DXF, DWG, STEP, PDF — up to 50MB',
-}
 
 /* ─── QuoteLineItem Component ─── */
 
@@ -151,8 +151,6 @@ export function QuoteLineItem({
   onDelete,
 }: QuoteLineItemProps) {
   const [isExpanded, setIsExpanded] = useState(true)
-  const [dragOver, setDragOver] = useState(false)
-
   const svc = serviceConfig[part.service]
 
   const update = (updates: Partial<QuotePartData>) => onChange(part.id, updates)
@@ -328,33 +326,29 @@ export function QuoteLineItem({
             <SheetMetalFields part={part} update={update} toggleProcess={toggleProcess} />
           )}
 
-          {/* File Upload */}
-          <div>
-            <label className="micro-label" style={{ marginBottom: 6, display: 'block' }}>Files</label>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false) }}
-              style={{
-                border: `1.5px dashed ${dragOver ? svc.color : 'var(--border)'}`,
-                borderRadius: '0.5rem',
-                padding: '1rem 1.25rem',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                backgroundColor: dragOver ? `${svc.color}08` : 'transparent',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Upload size={16} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Drop files or click to browse
-                </span>
-              </div>
-              <p style={{ fontSize: '0.65rem', marginTop: 4, color: 'var(--text-muted)', opacity: 0.6 }}>
-                {fileHints[part.service]}
-              </p>
-            </div>
+          {/* File Upload + Geometry Analysis */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            <label className="micro-label" style={{ display: 'block' }}>CAD File &amp; Geometry</label>
+            {!part.geometryResult && (
+              <FileDropzone
+                serviceColor={svc.color}
+                serviceType={part.service}
+                onComplete={(uploadResult: FileUploadResult) => {
+                  update({
+                    fileId: uploadResult.fileId,
+                    geometryResultId: uploadResult.geometryResultId,
+                    geometryResult: uploadResult.result,
+                    // Auto-suggest service from geometry recommendation
+                  })
+                }}
+                onError={(error: string) => {
+                  console.error('File upload error:', error)
+                }}
+              />
+            )}
+            {part.geometryResult && (
+              <GeometryCard result={part.geometryResult} compact />
+            )}
           </div>
         </div>
       )}

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Speedcut Platform — Customer Portal',
-  description: 'Digital Manufacturing-as-a-Service by Speedcut Engineering',
+  title: 'Speedcut — CNC Machining & Wire EDM Platform',
+  description: 'Upload CAD files and get instant quotes for precision CNC milling, turning, and wire EDM. ISO 9001 certified, fast turnaround.',
 }
 
 export default function RootLayout({

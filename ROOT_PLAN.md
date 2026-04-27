@@ -9,7 +9,7 @@
 
 ## Platform Vision
 
-Speedcut is an AI-powered digital manufacturing platform enabling customers to upload STEP/STL files, receive instant geometry-driven quotes, and place orders fulfilled through a curated supplier network. The platform encompasses customer, partner, and admin portals with full lifecycle management from RFQ to delivery.
+Speedcut is an AI-powered digital manufacturing platform specialising in CNC machining (milling & turning) and Wire EDM (wire erosion & spark erosion). Customers upload STEP/STL files, receive instant geometry-driven quotes, and place orders fulfilled through in-house capacity and a curated partner network. The platform encompasses customer, partner, and admin portals with full lifecycle management from RFQ to delivery.
 
 ---
 

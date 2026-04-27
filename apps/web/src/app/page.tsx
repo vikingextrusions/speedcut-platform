@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Package, Shield, Zap } from 'lucide-react'
+import { ArrowRight, Crosshair, Shield, Zap } from 'lucide-react'
 import { MarketingHeader } from '@/components/marketing-header'
 import { createClient } from '@/utils/supabase/server'
 
@@ -26,16 +26,16 @@ export default async function HomePage() {
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] text-sm font-semibold">
               <Zap size={14} />
-              Digital Manufacturing Platform
+              Precision CNC & EDM Platform
             </div>
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-tight">
-              Custom Parts,{' '}
+              Precision Machined Parts,{' '}
               <span className="text-[var(--accent)]">Delivered Fast</span>
             </h1>
             <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto">
-              Get instant quotes for custom rubber extrusions, seals, and gaskets.
-              Upload your drawings and receive precision-manufactured parts from our
-              network of certified manufacturers.
+              Upload STEP files and get instant quotes for CNC milling, turning,
+              and wire EDM. Precision-manufactured parts with full traceability
+              and ISO 9001 certified quality.
             </p>
           </div>
 
@@ -71,24 +71,24 @@ export default async function HomePage() {
           {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
             <div className="card-hover space-y-3 text-left">
-              <Package className="text-[var(--accent)]" size={28} />
+              <Crosshair className="text-[var(--accent)]" size={28} />
               <h3 className="font-bold text-lg">Instant Quoting</h3>
               <p className="text-sm text-[var(--text-muted)]">
-                Upload CAD files and get automated pricing in minutes, not days.
+                Upload STEP or DXF files and get automated pricing for CNC and EDM in minutes.
               </p>
             </div>
             <div className="card-hover space-y-3 text-left">
               <Shield className="text-[var(--accent)]" size={28} />
-              <h3 className="font-bold text-lg">Quality Assured</h3>
+              <h3 className="font-bold text-lg">CMM Inspected</h3>
               <p className="text-sm text-[var(--text-muted)]">
-                Every part inspected and certified. Full traceability from order to delivery.
+                Every part CMM inspected with full material certification and dimensional reports.
               </p>
             </div>
             <div className="card-hover space-y-3 text-left">
               <Zap className="text-[var(--accent)]" size={28} />
               <h3 className="font-bold text-lg">Fast Turnaround</h3>
               <p className="text-sm text-[var(--text-muted)]">
-                Leveraging our partner network to deliver parts when you need them.
+                In-house CNC and EDM capacity with express lead times from 3 working days.
               </p>
             </div>
           </div>

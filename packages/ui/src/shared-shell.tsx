@@ -278,9 +278,15 @@ export function SharedShell({
                 {/* Section Items */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {section.items.map((item) => {
-                    const isActive =
-                      pathname === item.href ||
-                      (item.href !== '/' && pathname?.startsWith(item.href + '/'))
+                    // Check if another nav item is a more specific (exact) match
+                    // e.g. when on /quotes/new, don't also highlight /quotes
+                    const anotherItemIsExactMatch = section.items.some(
+                      (other) => other.href !== item.href && pathname === other.href
+                    )
+                    const isActive = anotherItemIsExactMatch
+                      ? pathname === item.href
+                      : pathname === item.href ||
+                        (item.href !== '/' && pathname?.startsWith(item.href + '/'))
                     return (
                       <Link
                         key={item.href}

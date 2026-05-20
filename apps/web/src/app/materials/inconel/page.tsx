@@ -1,5 +1,5 @@
-import { Flame } from 'lucide-react'
-import { PlaceholderPage } from '@/components/placeholder-page'
+import { MaterialPageLayout } from '@/components/material-page-layout'
+import { materialsData } from '@/utils/materials-data'
 
 export const metadata = {
   title: 'Inconel & Hastelloy Machining | Speedcut',
@@ -7,12 +7,6 @@ export const metadata = {
 }
 
 export default function InconelPage() {
-  return (
-    <PlaceholderPage
-      title="Inconel & Hastelloy"
-      category="Material"
-      description="Expert machining of nickel-based superalloys including Inconel 625, 718, and Hastelloy C276. Suited for extreme temperature, pressure, and corrosive environments."
-      icon={<Flame size={14} />}
-    />
-  )
+  const data = materialsData.inconel
+  return <MaterialPageLayout material={data} />
 }

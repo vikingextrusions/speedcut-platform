@@ -1,5 +1,5 @@
-import { Gauge } from 'lucide-react'
-import { PlaceholderPage } from '@/components/placeholder-page'
+import { MaterialPageLayout } from '@/components/material-page-layout'
+import { materialsData } from '@/utils/materials-data'
 
 export const metadata = {
   title: 'Titanium Machining — Grade 2 & Grade 5 | Speedcut',
@@ -7,12 +7,6 @@ export const metadata = {
 }
 
 export default function TitaniumPage() {
-  return (
-    <PlaceholderPage
-      title="Titanium"
-      category="Material"
-      description="Specialist CNC machining of titanium Grade 2 (commercially pure) and Grade 5 (Ti-6Al-4V). High strength-to-weight ratio for aerospace, medical, and motorsport applications."
-      icon={<Gauge size={14} />}
-    />
-  )
+  const data = materialsData.titanium
+  return <MaterialPageLayout material={data} />
 }

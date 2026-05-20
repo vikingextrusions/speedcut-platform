@@ -1,5 +1,5 @@
-import { CircleDot } from 'lucide-react'
-import { PlaceholderPage } from '@/components/placeholder-page'
+import { MaterialPageLayout } from '@/components/material-page-layout'
+import { materialsData } from '@/utils/materials-data'
 
 export const metadata = {
   title: 'Brass & Copper Machining | Speedcut',
@@ -7,12 +7,6 @@ export const metadata = {
 }
 
 export default function BrassCopperPage() {
-  return (
-    <PlaceholderPage
-      title="Brass & Copper"
-      category="Material"
-      description="Precision CNC machining of brass (CZ121, CW614N) and copper (C101, C106) for electrical connectors, busbars, heat exchangers, and decorative components."
-      icon={<CircleDot size={14} />}
-    />
-  )
+  const data = materialsData['brass-copper']
+  return <MaterialPageLayout material={data} />
 }

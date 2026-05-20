@@ -1,5 +1,5 @@
-import { Target } from 'lucide-react'
-import { PlaceholderPage } from '@/components/placeholder-page'
+import { MaterialPageLayout } from '@/components/material-page-layout'
+import { materialsData } from '@/utils/materials-data'
 
 export const metadata = {
   title: 'Tool Steel Machining & EDM — H13, D2, S7 | Speedcut',
@@ -7,12 +7,6 @@ export const metadata = {
 }
 
 export default function ToolSteelPage() {
-  return (
-    <PlaceholderPage
-      title="Tool Steel"
-      category="Material"
-      description="CNC machining and Wire EDM of hardened tool steels including H13, D2, S7, A2, and M2. Specialist capability for die, mould, and punch tooling up to 65 HRC."
-      icon={<Target size={14} />}
-    />
-  )
+  const data = materialsData['tool-steel']
+  return <MaterialPageLayout material={data} />
 }

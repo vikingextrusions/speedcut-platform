@@ -1,5 +1,5 @@
-import { Cpu } from 'lucide-react'
-import { PlaceholderPage } from '@/components/placeholder-page'
+import { MaterialPageLayout } from '@/components/material-page-layout'
+import { materialsData } from '@/utils/materials-data'
 
 export const metadata = {
   title: 'Engineering Plastics — PEEK, Acetal, Nylon | Speedcut',
@@ -7,12 +7,6 @@ export const metadata = {
 }
 
 export default function EngineeringPlasticsPage() {
-  return (
-    <PlaceholderPage
-      title="Engineering Plastics"
-      category="Material"
-      description="CNC machining of high-performance engineering plastics including PEEK, Acetal (Delrin), Nylon 6/66, PTFE, and UHMWPE. Ideal for lightweight, non-conductive, or chemically inert components."
-      icon={<Cpu size={14} />}
-    />
-  )
+  const data = materialsData['engineering-plastics']
+  return <MaterialPageLayout material={data} />
 }

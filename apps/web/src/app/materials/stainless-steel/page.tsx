@@ -1,5 +1,5 @@
-import { Shield } from 'lucide-react'
-import { PlaceholderPage } from '@/components/placeholder-page'
+import { MaterialPageLayout } from '@/components/material-page-layout'
+import { materialsData } from '@/utils/materials-data'
 
 export const metadata = {
   title: 'Stainless Steel Machining — 303, 304, 316 | Speedcut',
@@ -7,12 +7,6 @@ export const metadata = {
 }
 
 export default function StainlessSteelPage() {
-  return (
-    <PlaceholderPage
-      title="Stainless Steel"
-      category="Material"
-      description="Precision machining of stainless steel grades 303, 304, 316, 17-4PH, and duplex. Excellent corrosion resistance for medical, marine, and food-grade applications."
-      icon={<Shield size={14} />}
-    />
-  )
+  const data = materialsData['stainless-steel']
+  return <MaterialPageLayout material={data} />
 }
